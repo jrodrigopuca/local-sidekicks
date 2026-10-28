@@ -1,0 +1,6 @@
+# macOS Finder metadata (same reason as local-agents: a checkout without global
+# excludes would count it as untracked and mark the tree dirty).
+.DS_Store
+__pycache__/
+.venv/
+node_modules/

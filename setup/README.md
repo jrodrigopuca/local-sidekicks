@@ -54,7 +54,11 @@ En el `opencode.json` del proyecto donde corre el harness:
       "name": "Ollama (local)",
       "options": { "baseURL": "http://localhost:11434/v1" },
       "models": {
-        "qwen3.5:2b-16k": { "name": "Qwen 3.5 2B (16k ctx)", "tool_call": true }
+        "qwen3.5:2b-16k": {
+          "name": "Qwen 3.5 2B (16k ctx)",
+          "tool_call": true,
+          "options": { "reasoning_effort": "none", "temperature": 0.2 }
+        }
       }
     }
   }
@@ -64,6 +68,13 @@ En el `opencode.json` del proyecto donde corre el harness:
 - `agent.title.disable`: opencode genera un título de sesión con una llamada
   extra antes de la del agente; con un 2B esa llamada tardó 510 s de 586.
 - `tool_call: true`: sin eso opencode no le ofrece herramientas al modelo.
+- `options`: se copia tal cual al body de cada request (verificado con el
+  proxy). **`reasoning_effort: "none"` apaga el razonamiento de Qwen 3.5 en
+  el endpoint `/v1`** (0 tokens de razonamiento; `think: false` ahí solo lo
+  reduce — ese es el nombre de la API nativa). Sin esto una respuesta de una
+  palabra tardó 180 s; con esto, 0,6 s. `temperature` tampoco se pasa desde
+  el frontmatter del agente: va acá o como `PARAMETER` del Modelfile.
+  Medido en el spike 2, sección "Corrección".
 - Verificar con `opencode models | grep ollama` que el modelo aparece.
 
 ## 3. En cada agente: negar `execute`
@@ -88,7 +99,16 @@ schemas). Medido en el spike 1, corridas 5-7.
 ## 4. Correr desde un script
 
 - Siempre `opencode run --standalone …`: el servicio de fondo se colgó dos
-  veces al arrancar (loop de `GET /api/tags` sin mandar el chat).
+  veces al arrancar (loop de `GET /api/tags` sin mandar el chat). Y matar el
+  `opencode serve --service` viejo antes de una tanda: uno de cinco días
+  tenía abierta `opencode.db` cuando empezó una franja de una hora en la que
+  ningún `run` arrancaba.
+- **El arranque de `--standalone` a veces tarda minutos** (medidos 105 s y
+  479 s en corridas que después terminaron bien; en el log, el servidor queda
+  antes de su primera acción con *watchers* sobre `/Users/juan` y `/`). Un
+  tope corto lo confunde con un modelo colgado. Sin verificar todavía: un
+  `opencode serve --port N` persistente por tanda y `run --server
+  http://127.0.0.1:N` pagaría el boot una sola vez.
 - Tope duro por corrida: `timeout -s KILL <seg> opencode run …`. opencode
   ignora el SIGTERM que manda `timeout` sin `-s`.
 - Las salidas (dumps, jsonl, logs) van **fuera** de la carpeta del fixture:

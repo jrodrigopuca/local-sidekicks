@@ -53,6 +53,7 @@ for i in range(1, args.n + 1):
             rc = -9
     secs = round(time.time() - t0)
     tools, text, errors = [], "", []
+    boot = None  # seconds from launch to opencode's first event: a slow boot looks like a hung model otherwise
     for line in open(jsonl):
         line = line.strip()
         if not line:
@@ -61,6 +62,8 @@ for i in range(1, args.n + 1):
             e = json.loads(line)
         except ValueError:
             continue
+        if boot is None and isinstance(e.get("timestamp"), (int, float)):
+            boot = round(e["timestamp"] / 1000 - t0)
         if e.get("type") == "error":
             errors.append(str(e.get("error", {}).get("message", e.get("error"))))
             continue
@@ -76,11 +79,12 @@ for i in range(1, args.n + 1):
     for s in args.must_contain:
         if s not in text:
             ok = False
-    rows.append({"run": tag, "rc": rc, "secs": secs, "tools": tools, "format_ok": ok, "errors": errors, "text": text})
+    rows.append({"run": tag, "rc": rc, "secs": secs, "boot_secs": boot, "tools": tools, "format_ok": ok,
+                 "errors": errors, "text": text})
     with open(os.path.join(args.out, tag + ".txt"), "w") as f:
         f.write(text)
-    print("%-14s rc=%-3d %4ds  tools=%-22s format=%s  | %s" % (
-        tag, rc, secs, ",".join(tools) or "-", "OK " if ok else "no",
+    print("%-14s rc=%-3d %4ds boot=%-4s tools=%-22s format=%s  | %s" % (
+        tag, rc, secs, ("%ds" % boot) if boot is not None else "?", ",".join(tools) or "-", "OK " if ok else "no",
         (("ERROR " + "; ".join(errors)) if errors else text[:70]).replace("\n", " ")))
     sys.stdout.flush()
 

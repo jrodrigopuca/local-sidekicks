@@ -65,6 +65,85 @@ sampler**, no por el prompt.
   un loop propio contra `/api/chat` tiene `think`, `format`, `temperature`
   y `num_ctx` por llamada. Lo que un host no deja tocar, ahí se mide.
 
+## Corrección (misma noche): opencode sí acepta `options`, y eso cambia la tabla
+
+La conclusión de arriba —"no se arregla desde opencode"— era cierta para
+el frontmatter del agente y falsa para la configuración del modelo. En
+`opencode.json`, `provider.ollama.models.<id>.options` **se copia tal cual
+al body del request** (verificado con el proxy: llegaron `think`,
+`temperature` y `reasoning_effort`). Y medido campo por campo contra `/v1`
+con la misma pregunta de una palabra:
+
+| Campo en el request `/v1` | Razonamiento | Tokens | Tiempo |
+|---|---:|---:|---:|
+| ninguno | 14.572 chars | 3.466 | 180 s |
+| `think: false` | 2.896 chars | 740 | 38 s |
+| `temperature: 0.2` sola | 1.241 chars | 340 | 18 s |
+| **`reasoning_effort: "none"`** | **0** | **1** | **0,6 s** |
+
+El endpoint OpenAI-compatible de ollama lee `reasoning_effort`, no `think`
+(ese es el nombre de la API nativa, que usa el runner). Qwen 3.5 ignora el
+`/no_think` en el prompt (1.476 chars igual).
+
+Con `options: {reasoning_effort: "none", temperature: 0.2}` en el modelo,
+la variante `probe-ex` (ejemplo completo + "empezá con USES OF") por
+opencode, tres corridas:
+
+| | antes (matriz de arriba) | con `options` |
+|---|---|---|
+| Formato | 0/3 | **3/3** |
+| Tiempo | 44 · 708 · 28 s | **14 · 8 · 6 s** |
+| Recall de los 10 usos | no medido | **6/10, 6/10, 6/10** |
+| Acceso dinámico | — | 0/3 |
+
+Lectura honesta: el formato **sí** era alcanzable con prompt una vez
+apagado el razonamiento y bajada la temperatura — la matriz de la mañana
+medía el prompt con el thinking encendido, y eso tapaba todo. Pero el
+contenido empeoró respecto del runner de control (10/10 en 5/5): las tres
+corridas omitieron las tres líneas del archivo de test y una de `Cart.tsx`.
+Hipótesis, sin probar: el runner vuelve a pegar la evidencia junto al pedido
+final y opencode no; a 2B, lo que quedó lejos se cae. Es el próximo
+experimento, y es barato.
+
+### El experimento de re-anclaje por prompt (tres variantes, 3 corridas cada una)
+
+La hipótesis era que el runner llega a 10/10 porque vuelve a pegar la
+evidencia junto al pedido final. En opencode no se controla el flujo de
+mensajes, así que el re-anclaje tiene que pedirlo el prompt:
+
+| Variante | Instrucción | Formato | Recall (bloque `USES OF`) |
+|---|---|:---:|---|
+| `probe-ex` (base) | ejemplo completo | 3/3 | 6/10 · 6/10 · 6/10 |
+| `probe-map` | "una línea por match, mismo orden, mismo número que grep" | 3/3 | 6/10 · 6/10 · 6/10 |
+| `probe-copy` | "copiá primero las líneas del grep, después clasificá" | 0/3 | 8/10 · 8/10 · (ilegible) |
+
+Lectura: la instrucción de mapeo no mueve nada; copiar la evidencia antes de
+clasificar sube el recall (6 → 8) pero rompe el formato (negritas, bloque
+renombrado) y sigue inventando una línea (`Receipt.tsx:5`). **El re-anclaje
+estructural del runner (la evidencia en el mismo mensaje que el pedido, y
+un esquema que el sampler hace cumplir) no se reproduce por prompt con un
+2B.** Las tres variantes se quedaron sin las tres líneas del archivo de test
+que grep sí devolvió.
+
+### El "cuelgue" de opencode era un arranque lento
+
+Durante esta tanda, `opencode run --standalone` tardó en arrancar 105 s y
+**479 s** en dos corridas que después terminaron bien, y en otra franja de
+una hora ninguna corrida pasó del boot dentro de topes de 60-300 s. El log
+muestra el servidor detenido antes de su primera acción, con *watchers*
+sobre directorios padre hasta `/Users/juan` y `/`. Es intermitente: tras
+una corrida que arranca, las siguientes arrancan en segundos. Los topes del
+harness no pueden distinguirlo de un modelo colgado; `spike-run.py` ahora
+registra el tiempo hasta el primer evento para separarlos. La salida que
+opencode ofrece y no se probó: un `opencode serve --port N` persistente por
+tanda y `run --server http://127.0.0.1:N`, que paga el boot una vez.
+
+Lo que sigue valiendo del bloque de arriba: `format` con esquema solo lo da
+la API nativa; la varianza de tiempos venía del thinking; y la temperatura
+por frontmatter de agente no se pasa — va por `options` del modelo o por
+`PARAMETER` del Modelfile (que opencode heredaría; `think` no existe como
+parámetro de Modelfile, verificado).
+
 ## Runner de control: primer número (`runner/control.py`, misma tarde)
 
 Loop propio contra `/api/chat` (nativo), `grep`/`read`/`glob` confinadas al

@@ -103,7 +103,125 @@ def tool_glob(root, args):
     return "\n".join(sorted(hits)[:100]) or "No files match."
 
 
+def _find_block(lines, old_lines):
+    """Positions where old_lines occur in lines, comparing stripped lines (a 2B
+    rarely copies indentation exactly)."""
+    want = [l.strip() for l in old_lines]
+    hits = []
+    for i in range(len(lines) - len(want) + 1):
+        if [l.strip() for l in lines[i:i + len(want)]] == want:
+            hits.append(i)
+    return hits
+
+
+TEST_CASE = __import__("re").compile(r"\b(?:it|test)\s*\(\s*([\"'`])(.*?)\1")
+
+
+def guard_write(root, path, before, after):
+    """What the model cannot be trusted with, enforced: the agent's `writable`
+    globs, and never silently dropping an existing test case."""
+    rel = os.path.relpath(inside(root, path), root)
+    allowed = AGENT_META.get("writable")
+    if allowed and not any(fnmatch.fnmatch(rel, g) for g in allowed):
+        raise ValueError("Editing %s is not allowed for this task. You may only change files matching: %s"
+                         % (rel, ", ".join(allowed)))
+    if fnmatch.fnmatch(rel, "*.test.*") or fnmatch.fnmatch(rel, "*.spec.*"):
+        # Identity, not count: a 2B replaced the only existing test with its new
+        # one and the suite stayed at "1 passed". Every test that existed when
+        # the run started must survive; the model may rework the ones it added.
+        baseline = BASELINE_TESTS.get(rel, set())
+        after_names = set(m[1] for m in TEST_CASE.findall(after or ""))
+        lost = [n for n in baseline if n not in after_names]
+        if lost:
+            raise ValueError("Rejected: this change removes existing test(s) %s from %s. Keep every existing "
+                             "it()/test() exactly as it is and add yours next to them." % (", ".join(repr(n) for n in lost), rel))
+
+
+def tool_edit(root, args):
+    path, old, new = args.get("path"), args.get("old_string"), args.get("new_string")
+    if not path or not isinstance(old, str) or not isinstance(new, str):
+        raise ValueError("edit needs 'path', 'old_string' and 'new_string'")
+    full = inside(root, path)
+    if not os.path.isfile(full):
+        raise ValueError("no such file: %s (use write to create one)" % path)
+    text = open(full).read()
+    if old and text.count(old) == 1:
+        updated = text.replace(old, new, 1)
+    else:
+        lines = text.split("\n")
+        old_lines = old.strip("\n").split("\n") if old.strip() else []
+        hits = _find_block(lines, old_lines) if old_lines else []
+        if len(hits) != 1:
+            if not hits:
+                raise ValueError("old_string not found in %s. Read the file and copy the text exactly, "
+                                 "including several unique lines." % path)
+            raise ValueError("old_string matches %d places in %s; include more surrounding lines." % (len(hits), path))
+        i = hits[0]
+        lines[i:i + len(old_lines)] = new.strip("\n").split("\n")
+        updated = "\n".join(lines)
+    guard_write(root, path, text, updated)
+    with open(full, "w") as f:
+        f.write(updated)
+    return "Edited %s (%+d chars)." % (path, len(updated) - len(text))
+
+
+def tool_write(root, args):
+    path, content = args.get("path"), args.get("content")
+    if not path or not isinstance(content, str):
+        raise ValueError("write needs 'path' and 'content'")
+    full = inside(root, path)
+    before = open(full).read() if os.path.isfile(full) else ""
+    guard_write(root, path, before, content)
+    os.makedirs(os.path.dirname(full) or full, exist_ok=True)
+    with open(full, "w") as f:
+        f.write(content)
+    return "Wrote %s (%d lines)." % (path, content.count("\n") + 1)
+
+
+AGENT_META = {}  # set per run; tools that need agent settings read it here
+BASELINE_TESTS = {}  # rel path -> test names present when the run started
+
+
+def snapshot_tests(root):
+    BASELINE_TESTS.clear()
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in (".git", "node_modules", ".opencode")]
+        for fn in filenames:
+            if fnmatch.fnmatch(fn, "*.test.*") or fnmatch.fnmatch(fn, "*.spec.*"):
+                full = os.path.join(dirpath, fn)
+                try:
+                    names = set(m[1] for m in TEST_CASE.findall(open(full, errors="replace").read()))
+                except OSError:
+                    continue
+                BASELINE_TESTS[os.path.relpath(full, root)] = names
+
+
+def tool_run_tests(root, args):
+    cmd = AGENT_META.get("test_command")
+    if not cmd:
+        raise ValueError("this agent has no test_command configured")
+    try:
+        r = subprocess.run(cmd, shell=True, cwd=root, capture_output=True, text=True, timeout=180)
+    except subprocess.TimeoutExpired:
+        return "Tests timed out after 180 s."
+    out = (r.stdout + r.stderr).strip().splitlines()
+    tail = "\n".join(out[-40:])
+    return "exit code %d\n%s" % (r.returncode, tail)
+
+
 TOOLS = {
+    "edit": (tool_edit, "Replace one block of text in a file. old_string must match the file's text (copy it from read); "
+                        "it must occur once.",
+             {"type": "object", "properties": {
+                 "path": {"type": "string"},
+                 "old_string": {"type": "string", "description": "Exact text to replace, several lines for uniqueness."},
+                 "new_string": {"type": "string", "description": "The replacement text."},
+             }, "required": ["path", "old_string", "new_string"]}),
+    "write": (tool_write, "Write a whole file (creates or overwrites it). Prefer edit for small changes.",
+              {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
+               "required": ["path", "content"]}),
+    "run_tests": (tool_run_tests, "Run the project's test suite and return its result.",
+                  {"type": "object", "properties": {}}),
     "grep": (tool_grep, "Search file contents. Returns one line per match as path:line: text. Paths are relative to the repository root.",
              {"type": "object", "properties": {
                  "pattern": {"type": "string", "description": "Text to search for (literal by default)."},
@@ -202,7 +320,10 @@ def conforms(value, schema):
 
 
 def run_once(model, meta, prompt, schema, root, user_prompt, timeout):
-    names = [n for n in (meta.get("tools") or list(TOOLS)) if n in TOOLS]
+    AGENT_META.clear()
+    AGENT_META.update(meta)
+    snapshot_tests(root)
+    names = [n for n in (meta.get("tools") or ["grep", "read", "glob"]) if n in TOOLS]
     tools = tool_schemas(names)
     messages = [{"role": "system", "content": prompt}, {"role": "user", "content": user_prompt}]
     log = {"steps": [], "tool_calls": [], "prompt_tokens": 0, "eval_tokens": 0, "errors": []}
@@ -238,16 +359,21 @@ def run_once(model, meta, prompt, schema, root, user_prompt, timeout):
             if name not in TOOLS or name not in names:
                 result = "Error: unknown tool %r. Available: %s" % (name, ", ".join(names))
             elif key in seen:
-                result = "You already called %s with these arguments; its result is above. Do not repeat it." % name
+                # A repeat is only pointless if nothing changed since; after an
+                # edit, re-running the tests or re-reading a file is the right move.
+                result = ("You already called %s with these arguments and nothing has changed since; its result is above. "
+                          "If the task is done, answer now without calling tools." % name)
             else:
                 try:
                     result = TOOLS[name][0](root, args)
                 except (ValueError, OSError, subprocess.TimeoutExpired) as e:
                     result = "Error: %s" % e
             seen.add(key)
+            if name in ("edit", "write") and not result.startswith("Error"):
+                seen = {k for k in seen if k.startswith(("edit", "write"))}  # the world changed: reads and test runs are fresh again
             if len(result) > MAX_TOOL_CHARS:
                 result = result[:MAX_TOOL_CHARS] + "\n... (truncated)"
-            log["tool_calls"].append({"name": name, "args": args, "chars": len(result)})
+            log["tool_calls"].append({"name": name, "args": args, "chars": len(result), "result": result[:1500]})
             messages.append({"role": "tool", "content": result, "tool_name": name})
     else:
         log["errors"].append("max_steps reached")
@@ -304,6 +430,13 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--timeout", type=int, default=300, help="seconds per model call")
     ap.add_argument("--expect", help="JSON list of 'path:line' that a correct answer's uses[] must contain")
+    ap.add_argument("--reset", action="store_true", help="git checkout -- . && git clean -fd in --cwd before each run")
+    ap.add_argument("--verify", help="shell command run in --cwd AFTER each run; its exit code and a vitest-style "
+                                     "'N passed / N failed' count are recorded")
+    ap.add_argument("--expect-tests", type=int, help="with --verify: minimum tests passed for the run to count as OK "
+                                                     "(baseline + the ones the task adds), so green never hides a regression")
+    ap.add_argument("--expect-diff", help="regex the git diff must match for the run to count as OK — green can be "
+                                          "gamed (a 2B wrote a test that never called the function under test)")
     a = ap.parse_args()
     meta, prompt, schema = parse_agent(a.agent)
     root = os.path.realpath(a.cwd)
@@ -312,8 +445,38 @@ def main():
     tag = os.path.basename(os.path.dirname(os.path.abspath(a.agent))) or "agent"
     rows = []
     for i in range(1, a.n + 1):
+        if a.reset:
+            subprocess.run(["git", "-C", root, "checkout", "--", "."], check=True)
+            subprocess.run(["git", "-C", root, "clean", "-fdq"], check=True)
         log = run_once(a.model, meta, prompt, schema, root, a.prompt, a.timeout)
         score = ""
+        if a.reset or a.verify:
+            diff = subprocess.run(["git", "-C", root, "status", "--short"], capture_output=True, text=True).stdout
+            log["changed_files"] = [l[3:] for l in diff.splitlines() if l.strip()]
+            log["diff"] = subprocess.run(["git", "-C", root, "--no-pager", "diff"], capture_output=True, text=True).stdout[:20000]
+            score += " changed=%s" % (",".join(log["changed_files"]) or "-")
+        if a.verify:
+            import re
+            try:
+                v = subprocess.run(a.verify, shell=True, cwd=root, capture_output=True, text=True, timeout=180)
+                out = v.stdout + v.stderr
+                passed = re.search(r"Tests\s+(\d+) passed", out)
+                failed = re.search(r"Tests\s+(?:\d+ failed \| )?(\d+) failed|(\d+) failed", out)
+                log["verify"] = {"rc": v.returncode,
+                                 "passed": int(passed.group(1)) if passed else None,
+                                 "failed": int(next(g for g in failed.groups() if g)) if failed else 0,
+                                 "tail": "\n".join(out.strip().splitlines()[-15:])}
+            except subprocess.TimeoutExpired:
+                log["verify"] = {"rc": None, "passed": None, "failed": None, "tail": "verify timed out"}
+            v = log["verify"]
+            if a.expect_tests is not None:
+                v["ok"] = v["rc"] == 0 and (v["passed"] or 0) >= a.expect_tests
+            if a.expect_diff:
+                v["diff_ok"] = bool(re.search(a.expect_diff, log.get("diff", "")))
+                v["ok"] = v.get("ok", v["rc"] == 0) and v["diff_ok"]
+                score += " diff=%s" % ("OK" if v["diff_ok"] else "NO")
+            score += " verify=rc%s passed=%s failed=%s%s" % (
+                v["rc"], v["passed"], v["failed"], (" -> %s" % ("OK" if v["ok"] else "NO")) if "ok" in v else "")
         if expect is not None and isinstance(log.get("output"), dict):
             # A 2B sometimes writes "path:line" into `path`; score the content,
             # and count the deviation separately rather than as ten misses.

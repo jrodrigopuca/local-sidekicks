@@ -1,0 +1,4 @@
+change-react-component-1   112s  steps=9  tools=glob,read,read,read,edit,run_tests,edit,edit,run_tests  tokens in/out=17701/795  format=n/a changed=src/components/Cart.tsx diff=OK verify=rc0 passed=6 failed=0 -> OK
+change-react-component-2   113s  steps=9  tools=glob,read,read,read,edit,run_tests,edit,edit,run_tests  tokens in/out=18023/894  format=n/a changed=src/components/Cart.tsx diff=OK verify=rc0 passed=6 failed=0 -> OK
+change-react-component-3   134s  steps=10  tools=glob,read,read,read,edit,run_tests,edit,edit,run_tests,read  tokens in/out=21191/938  format=n/a changed=src/components/Cart.tsx diff=OK verify=rc0 passed=6 failed=0 -> OK
+== change-react-component on bonsai-2:27b: format 0/3, mean 119s, mean out tokens 875

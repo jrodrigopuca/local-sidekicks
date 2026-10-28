@@ -11,39 +11,47 @@ fixtures no dice nada. Formato de la tabla: igual que `interaction/MODELOS.md`.
 |---|---|---|---|
 | `qwen3.5:2b` (alias `2b-16k`, Q8/mxfp8) | M1 8 GB, local | 0.40.12 | `0817328c8f11` |
 | `qwen3.5:9b` (nvfp4) | 192.168.1.144 por red | 0.40.6 | `d63f830f28d5` |
+| `bonsai-2:27b` (ternario, Q2_0, 8,3 GB; 9,0 GB cargado con 16K) | 192.168.1.144 por red, M2 Pro 16 GB | 0.40.6 | `f3c4f4208659` |
 
 Mismo runner, mismos fixtures (`runner/fixtures/`), `think: false`,
 `temperature: 0.2`, `num_ctx` 16384, piso de prompt 545 tokens.
 
 ### Nivel 1 — `find-usages` (10 usos, uno dinámico)
 
-| | 2B | 9B |
-|---|---|---|
-| Formato válido (esquema) | 5/5 | 3/3 |
-| Recall de los 10 usos | 10/10 en 5/5 | 10/10 en 3/3 |
-| Inventados | 0 en 4/5 | 0 en 3/3 |
-| `kind: dynamic` en `fmt["formatPrice"]` | 1/5 | **3/3** |
-| `path` con la línea pegada | 2/5 corridas | 0/3 |
-| Tiempo por corrida | 28-38 s | 23-32 s |
+| | 2B | 9B | bonsai-2 27B |
+|---|---|---|---|
+| Formato válido (esquema) | 5/5 | 3/3 | 3/3 |
+| Recall de los 10 usos | 10/10 en 5/5 | 10/10 en 3/3 | 10/10 en 3/3 |
+| Inventados | 0 en 4/5 | 0 en 3/3 | 0 en 3/3 |
+| `kind: dynamic` en `fmt["formatPrice"]` | 1/5 | **3/3** | **3/3** |
+| `path` con la línea pegada | 2/5 corridas | 0/3 | 0/3 |
+| Tiempo por corrida | 28-38 s | 23-32 s | 81-90 s |
 
 ### Nivel 2 — `update-vitest-test` (agregar un test, suite 1 → 2 en verde, diff con `formatPercent(0.125)`)
 
-| | 2B | 9B |
-|---|---|---|
-| Correctas, con la regla del import en el prompt | 2/3 (spike 3, tanda 5) | **3/3** |
-| Correctas, **sin** la regla del import | 0/3 (spike 3, tanda 4) | **3/3** |
-| Pasos | 6 (las correctas) · 8 (las que fallan) | 5 con regla · **4 sin regla** |
-| Rechazos de las guardas | varios por tanda | 0 |
-| Tiempo por corrida | 33-62 s | 15-25 s |
+| | 2B | 9B | bonsai-2 27B |
+|---|---|---|---|
+| Correctas, con la regla del import en el prompt | 2/3 (spike 3, tanda 5) | **3/3** | **3/3** |
+| Correctas, **sin** la regla del import | 0/3 (spike 3, tanda 4) | **3/3** | sin medir |
+| Pasos | 6 (las correctas) · 8 (las que fallan) | 5 con regla · **4 sin regla** | 6 |
+| Rechazos de las guardas | varios por tanda | 0 | 0 |
+| Tiempo por corrida | 33-62 s | 15-25 s | 54-65 s |
 
 ### Nivel 3 — `change-react-component` (prop `discount` opcional en `Cart`; typecheck + tests propios + 4 tests oráculo que el modelo no ve)
 
-| | 2B | 9B |
-|---|---|---|
-| Oráculo débil (sin exigir markup idéntico con `discount={0}`) | 0/1 | 3/3 |
-| **Oráculo estricto**, sin regla de React | — | **0/3** — las tres escribieron `{discount && discount > 0 && …}`, que renderiza un `0` suelto |
-| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **2/3** (una ignoró la regla) |
-| Pasos / tiempo | 10 (tope) | 6-8 · 38-150 s ¹ |
+| | 2B | 9B | bonsai-2 27B |
+|---|---|---|---|
+| Oráculo débil (sin exigir markup idéntico con `discount={0}`) | 0/1 | 3/3 | — |
+| **Oráculo estricto**, sin regla de React | — | **0/3** — las tres escribieron `{discount && discount > 0 && …}`, que renderiza un `0` suelto | sin medir |
+| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **2/3** (una ignoró la regla) | **3/3** — ternario con `: null` las tres veces |
+| Pasos / tiempo | 10 (tope) | 6-8 · 38-150 s ¹ | 9-10 · 112-134 s |
+
+Las tres corridas de bonsai siguieron la misma secuencia: primer `edit`,
+`tsc` falla con `TS18048: 'discount' is possibly 'undefined'`, dos edits
+chicos, verde. **Se corrigió solo a partir de un error de tipos** — eso es
+lo que el 9B no mostró (no lo necesitó: su primer intento ya tipaba, con el
+bug del `0` adentro). También eligió `Math.round` para el monto, que nadie
+pidió y es lo correcto con centavos.
 
 ¹ Una corrida tardó 1.494 s por un `Operation timed out` de red: la máquina
 remota estaba bajando otro modelo. No es del modelo.
@@ -75,6 +83,16 @@ Fuentes: `runs/20261028-1700-qwen3.5-2b-16k/`, `runs/20261028-1711-qwen3.5-9b/`
   "verde" signifique correcto.
 - El 9B por Wi‑Fi (~95 ms de ping) fue **más rápido** que el 2B local: el
   costo de la red es nada al lado del costo por token en un M1 de 8 GB.
+- **La apuesta ternaria salió bien en resultados y cara en tiempo.**
+  `bonsai-2:27b` (27B en 8,3 GB) igualó al 9B en niveles 1 y 2 y lo superó
+  en el 3 (3/3 contra 2/3 bajo el oráculo estricto), pero tarda **2,5-3×**
+  por corrida con el mismo piso de tokens: son 27B de parámetros por token
+  aunque pesen lo que un 9B. Para tareas de nivel 1-2 el 9B alcanza y es más
+  rápido; para las que exigen criterio (nivel 3) el 27B ternario paga su
+  tiempo. En una máquina de 16 GB es, hoy, el techo de calidad medido.
+- Los tiempos del 9B en nivel 3 no son limpios (la máquina bajaba bonsai
+  durante esa tanda); los de bonsai sí. Repetir el nivel 3 del 9B con la
+  máquina quieta antes de citar una relación de tiempos exacta.
 
 ## Cómo actualizarlo
 

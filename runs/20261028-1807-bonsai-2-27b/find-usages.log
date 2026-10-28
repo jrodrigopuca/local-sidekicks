@@ -1,0 +1,4 @@
+find-usages-1    90s  steps=2  tools=grep                tokens in/out=2340/661  format=OK recall=10/10 extra=0 invented=0
+find-usages-2    81s  steps=2  tools=grep                tokens in/out=2343/676  format=OK recall=10/10 extra=0 invented=0
+find-usages-3    81s  steps=2  tools=grep                tokens in/out=2375/696  format=OK recall=10/10 extra=0 invented=0
+== find-usages on bonsai-2:27b: format 3/3, mean 84s, mean out tokens 677

@@ -451,9 +451,11 @@ def main():
         log = run_once(a.model, meta, prompt, schema, root, a.prompt, a.timeout)
         score = ""
         if a.reset or a.verify:
-            diff = subprocess.run(["git", "-C", root, "status", "--short"], capture_output=True, text=True).stdout
-            log["changed_files"] = [l[3:] for l in diff.splitlines() if l.strip()]
-            log["diff"] = subprocess.run(["git", "-C", root, "--no-pager", "diff"], capture_output=True, text=True).stdout[:20000]
+            # Scoped to the fixture (`-- .`): a fixture that lives inside a bigger
+            # repo would otherwise report every change in that repo as its own.
+            diff = subprocess.run(["git", "-C", root, "status", "--short", "--", "."], capture_output=True, text=True).stdout
+            log["changed_files"] = [l[3:] for l in diff.splitlines() if l.strip() and not l.startswith("A ")]
+            log["diff"] = subprocess.run(["git", "-C", root, "--no-pager", "diff", "--", "."], capture_output=True, text=True).stdout[:20000]
             score += " changed=%s" % (",".join(log["changed_files"]) or "-")
         if a.verify:
             import re

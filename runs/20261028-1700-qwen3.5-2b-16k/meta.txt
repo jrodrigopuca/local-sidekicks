@@ -1,0 +1,5 @@
+host: http://127.0.0.1:11434
+model: qwen3.5:2b-16k
+date: 2026-10-28T17:00:14-03:00
+ollama: {"version":"0.40.12"}
+digest: 0817328c8f11

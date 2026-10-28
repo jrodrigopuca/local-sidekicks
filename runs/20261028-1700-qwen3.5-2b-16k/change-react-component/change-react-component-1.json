@@ -1,0 +1,182 @@
+{
+ "steps": [
+  {
+   "step": 1,
+   "tool_calls": 1,
+   "prompt_tokens": 976,
+   "eval_tokens": 29,
+   "secs": 6.6
+  },
+  {
+   "step": 2,
+   "tool_calls": 1,
+   "prompt_tokens": 1025,
+   "eval_tokens": 28,
+   "secs": 1.5
+  },
+  {
+   "step": 3,
+   "tool_calls": 1,
+   "prompt_tokens": 1244,
+   "eval_tokens": 30,
+   "secs": 2.0
+  },
+  {
+   "step": 4,
+   "tool_calls": 1,
+   "prompt_tokens": 1295,
+   "eval_tokens": 29,
+   "secs": 1.5
+  },
+  {
+   "step": 5,
+   "tool_calls": 1,
+   "prompt_tokens": 1599,
+   "eval_tokens": 178,
+   "secs": 8.7
+  },
+  {
+   "step": 6,
+   "tool_calls": 1,
+   "prompt_tokens": 1803,
+   "eval_tokens": 111,
+   "secs": 5.7
+  },
+  {
+   "step": 7,
+   "tool_calls": 1,
+   "prompt_tokens": 1940,
+   "eval_tokens": 151,
+   "secs": 7.1
+  },
+  {
+   "step": 8,
+   "tool_calls": 1,
+   "prompt_tokens": 2118,
+   "eval_tokens": 14,
+   "secs": 1.2
+  },
+  {
+   "step": 9,
+   "tool_calls": 1,
+   "prompt_tokens": 2683,
+   "eval_tokens": 252,
+   "secs": 12.4
+  },
+  {
+   "step": 10,
+   "tool_calls": 1,
+   "prompt_tokens": 2961,
+   "eval_tokens": 14,
+   "secs": 1.4
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "glob",
+   "args": {
+    "pattern": "**/Cart.tsx"
+   },
+   "chars": 23,
+   "result": "src/components/Cart.tsx"
+  },
+  {
+   "name": "read",
+   "args": {
+    "path": "src/components/Cart.tsx"
+   },
+   "chars": 463,
+   "result": "1: import { formatPrice } from \"../lib/format\";\n2: \n3: type Item = { name: string; cents: number };\n4: \n5: export function Cart({ items }: { items: Item[] }) {\n6:   const total = items.reduce((acc, i) => acc + i.cents, 0);\n7:   return (\n8:     <ul>\n9:       {items.map((i) => (\n10:         <li key={i.name}>\n11:           {i.name} — {formatPrice(i.cents)}\n12:         </li>\n13:       ))}\n14:       <li>Total: {formatPrice(total)}</li>\n15:     </ul>\n16:   );\n17: }"
+  },
+  {
+   "name": "glob",
+   "args": {
+    "pattern": "**/Cart.test.tsx"
+   },
+   "chars": 28,
+   "result": "src/components/Cart.test.tsx"
+  },
+  {
+   "name": "read",
+   "args": {
+    "path": "src/components/Cart.test.tsx"
+   },
+   "chars": 714,
+   "result": "1: import { describe, it, expect } from \"vitest\";\n2: import { renderToStaticMarkup } from \"react-dom/server\";\n3: import { Cart } from \"./Cart\";\n4: \n5: const items = [\n6:   { name: \"Café\", cents: 1000 },\n7:   { name: \"Medialuna\", cents: 2000 },\n8: ];\n9: \n10: describe(\"Cart\", () => {\n11:   it(\"renders one line per item\", () => {\n12:     const html = renderToStaticMarkup(<Cart items={items} />);\n13:     expect(html).toContain(\"Café\");\n14:     expect(html).toContain(\"Medialuna\");\n15:   });\n16: \n17:   it(\"renders the total of all items\", () => {\n18:     const html = renderToStaticMarkup(<Cart items={items} />);\n19:     expect(html).toContain(\"Total:\");\n20:     expect(html).toContain(\"30,00\");\n21:   });\n22: });"
+  },
+  {
+   "name": "edit",
+   "args": {
+    "path": "src/components/Cart.tsx",
+    "old_string": "export function Cart({ items }: { items: Item[] }) {",
+    "new_string": "export function Cart({ items, discount = 0 }: { items: Item[]; discount?: number }) {"
+   },
+   "chars": 43,
+   "result": "Edited src/components/Cart.tsx (+33 chars)."
+  },
+  {
+   "name": "edit",
+   "args": {
+    "path": "src/components/Cart.tsx",
+    "old_string": "  const total = items.reduce((acc, i) => acc + i.cents, 0);",
+    "new_string": "  const total = items.reduce((acc, i) => acc + i.cents, 0);\n  const discountAmount = (total * discount) / 100;"
+   },
+   "chars": 43,
+   "result": "Edited src/components/Cart.tsx (+51 chars)."
+  },
+  {
+   "name": "edit",
+   "args": {
+    "path": "src/components/Cart.tsx",
+    "old_string": "      ))}\n      <li>Total: {formatPrice(total)}</li>\n    </ul>\n  );\n}",
+    "new_string": "      ))}\n      {discount > 0 && discountAmount > 0 && (\n        <>\n          <li>Descuento: -{formatPrice(discountAmount)}</li>\n          <li>Total: {formatPrice(total - discountAmount)}</li>\n        </>\n      )}\n    </ul>\n  );\n}"
+   },
+   "chars": 44,
+   "result": "Edited src/components/Cart.tsx (+161 chars)."
+  },
+  {
+   "name": "run_tests",
+   "args": {},
+   "chars": 1187,
+   "result": "exit code 1\nRUN  v5.0.0 /Users/juan/Developer/local-sidekicks/runner/fixtures/react\n\n ❯ src/components/Cart.test.tsx (2 tests | 1 failed) 37ms\n   ❯ Cart (2)\n     × renders the total of all items 3ms\n\n Test Files  1 failed (1)\n      Tests  1 failed | 1 passed (2)\n   Start at  17:30:59\n   Duration  248ms (tests 43%, transform 32%, import 23%, worker 3%)\n\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  src/components/Cart.test.tsx > Cart > renders the total of all items\nAssertionError: expected '<ul><li>Café — $ 10,00</li><li>Medial…' to contain 'Total:'\n\nExpected: \"Total:\"\nReceived: \"<ul><li>Café — $ 10,00</li><li>Medialuna — $ 20,00</li></ul>\"\n\n ❯ src/components/Cart.test.tsx:19:18\n     17|   it(\"renders the total of all items\", () => {\n     18|     const html = renderToStaticMarkup(<Cart items={items} />);\n     19|     expect(html).toContain(\"Total:\");\n       |                  ^\n     20|     expect(html).toContain(\"30,00\");\n     21|   });\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\nnpm notice\nnpm notice New major version of npm available! 11.20.0 -> 12.2.1\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1\nnpm notice To update run: npm install -g npm@12.2.1\nnpm notice"
+  },
+  {
+   "name": "edit",
+   "args": {
+    "path": "src/components/Cart.tsx",
+    "old_string": "      ))}\n      {discount > 0 && discountAmount > 0 && (\n        <>\n          <li>Descuento: -{formatPrice(discountAmount)}</li>\n          <li>Total: {formatPrice(total - discountAmount)}</li>\n        </>\n      )}\n    </ul>\n  );\n}",
+    "new_string": "      ))}\n      {discount > 0 && discountAmount > 0 && (\n        <>\n          <li>Descuento: -{formatPrice(discountAmount)}</li>\n          <li>Total: {formatPrice(total - discountAmount)}</li>\n        </>\n      )}\n      <li>Total: {formatPrice(total)}</li>\n    </ul>\n  );\n}"
+   },
+   "chars": 43,
+   "result": "Edited src/components/Cart.tsx (+43 chars)."
+  },
+  {
+   "name": "run_tests",
+   "args": {},
+   "chars": 438,
+   "result": "exit code 0\nRUN  v5.0.0 /Users/juan/Developer/local-sidekicks/runner/fixtures/react\n\n\n Test Files  1 passed (1)\n      Tests  2 passed (2)\n   Start at  17:31:15\n   Duration  232ms (transform 37%, tests 34%, import 26%, worker 3%)\n\nnpm notice\nnpm notice New major version of npm available! 11.20.0 -> 12.2.1\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1\nnpm notice To update run: npm install -g npm@12.2.1\nnpm notice"
+  }
+ ],
+ "prompt_tokens": 17644,
+ "eval_tokens": 836,
+ "errors": [
+  "max_steps reached"
+ ],
+ "secs": 52,
+ "text": "",
+ "output": null,
+ "format_ok": null,
+ "invented": null,
+ "changed_files": [
+  "src/components/Cart.tsx"
+ ],
+ "diff": "diff --git a/runner/fixtures/react/src/components/Cart.tsx b/runner/fixtures/react/src/components/Cart.tsx\nindex ae9c027..ac70ded 100644\n--- a/runner/fixtures/react/src/components/Cart.tsx\n+++ b/runner/fixtures/react/src/components/Cart.tsx\n@@ -2,8 +2,9 @@ import { formatPrice } from \"../lib/format\";\n \n type Item = { name: string; cents: number };\n \n-export function Cart({ items }: { items: Item[] }) {\n+export function Cart({ items, discount = 0 }: { items: Item[]; discount?: number }) {\n   const total = items.reduce((acc, i) => acc + i.cents, 0);\n+  const discountAmount = (total * discount) / 100;\n   return (\n     <ul>\n       {items.map((i) => (\n@@ -11,6 +12,12 @@ export function Cart({ items }: { items: Item[] }) {\n           {i.name} — {formatPrice(i.cents)}\n         </li>\n       ))}\n+      {discount > 0 && discountAmount > 0 && (\n+        <>\n+          <li>Descuento: -{formatPrice(discountAmount)}</li>\n+          <li>Total: {formatPrice(total - discountAmount)}</li>\n+        </>\n+      )}\n       <li>Total: {formatPrice(total)}</li>\n     </ul>\n   );\n",
+ "verify": {
+  "rc": 1,
+  "passed": null,
+  "failed": 1,
+  "tail": " ❯ src/components/__oracle__.test.tsx:25:22\n     23|     expect(html).toContain(\"3,00\");\n     24|     expect(html).toContain(\"27,00\");\n     25|     expect(html).not.toContain(\"30,00\");\n       |                      ^\n     26|   });\n     27|\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\nnpm notice\nnpm notice New major version of npm available! 11.20.0 -> 12.2.1\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1\nnpm notice To update run: npm install -g npm@12.2.1\nnpm notice",
+  "diff_ok": true,
+  "ok": false
+ }
+}

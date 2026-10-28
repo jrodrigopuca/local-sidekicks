@@ -40,6 +40,14 @@ python3 -I runner/control.py --agent runner/examples/update-vitest-test/agent.md
   --prompt "formatPercent(ratio) was added to src/lib/format.ts. Add a test in src/lib/format.test.ts checking that formatPercent(0.125) returns '12,5 %'. Run the tests." \
   --n "$N" --out "$OUT/update-vitest-test" --model "$MODEL" --reset --verify "npx vitest run" \
   --expect-tests 2 --expect-diff 'formatPercent\(0\.125\)' | tee "$OUT/update-vitest-test.log"
-# leave the fixture as committed; each run's diff is inside its JSON
 git checkout -- runner/fixtures/vitest && git clean -fdq runner/fixtures/vitest
+
+echo "== change-react-component (nivel 3)"
+[ -d runner/fixtures/react/node_modules ] || (cd runner/fixtures/react && npm install --prefer-offline --no-audit --no-fund --silent)
+python3 -I runner/control.py --agent runner/examples/change-react-component/agent.md --cwd runner/fixtures/react \
+  --prompt "Add an optional discount prop to the Cart component (a percentage from 0 to 100). When discount is given and greater than 0, render a line 'Descuento: -<amount>' before the total, where <amount> is the discounted amount formatted with formatPrice, and make the total line show the total after the discount. Without the prop, or with 0, nothing changes. Run the tests." \
+  --n "$N" --out "$OUT/change-react-component" --model "$MODEL" --reset --verify "sh ../react.oracle/verify.sh" \
+  --expect-diff 'discount' | tee "$OUT/change-react-component.log"
+# leave the fixtures as committed; each run's diff is inside its JSON
+git checkout -- runner/fixtures/react && git clean -fdq runner/fixtures/react
 echo "resultados en $OUT"

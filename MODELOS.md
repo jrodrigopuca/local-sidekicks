@@ -36,7 +36,28 @@ Mismo runner, mismos fixtures (`runner/fixtures/`), `think: false`,
 | Rechazos de las guardas | varios por tanda | 0 |
 | Tiempo por corrida | 33-62 s | 15-25 s |
 
+### Nivel 3 — `change-react-component` (prop `discount` opcional en `Cart`; typecheck + tests propios + 4 tests oráculo que el modelo no ve)
+
+| | 2B | 9B |
+|---|---|---|
+| Oráculo débil (sin exigir markup idéntico con `discount={0}`) | 0/1 | 3/3 |
+| **Oráculo estricto**, sin regla de React | — | **0/3** — las tres escribieron `{discount && discount > 0 && …}`, que renderiza un `0` suelto |
+| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **2/3** (una ignoró la regla) |
+| Pasos / tiempo | 10 (tope) | 6-8 · 38-150 s ¹ |
+
+¹ Una corrida tardó 1.494 s por un `Operation timed out` de red: la máquina
+remota estaba bajando otro modelo. No es del modelo.
+
+El cambio de 3/3 a 0/3 lo produjo **el oráculo, no el modelo**: el primero
+chequeaba "sin línea de Descuento y total 30,00" y un `0` perdido pasaba. Se
+verificó aplicando el diff grabado de la corrida 1 al fixture y corriendo el
+oráculo nuevo sin modelo: `…</li>0<li>Total…`. Lección de método: el oráculo
+es parte de la especificación; uno débil hace quedar bien al modelo. Esta es
+hoy la tarea que discrimina, y por la razón correcta — es el bug que un
+revisor senior marca en un PR.
+
 Fuentes: `runs/20261028-1700-qwen3.5-2b-16k/`, `runs/20261028-1711-qwen3.5-9b/`
+(incluye `change-react-component/`, `…-con-regla-and/` y `update-vitest-test-sin-regla-import/`)
 (incluye `update-vitest-test-sin-regla-import/`), y las tandas del 2B en
 `docs/spikes/2026-10-28-nivel-2-vitest.md`.
 

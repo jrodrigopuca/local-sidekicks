@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "symbol": { "type": "string" },
+    "uses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "File path only, exactly as grep returned it, without the line number" },
+          "line": { "type": "integer" },
+          "kind": { "type": "string", "enum": ["definition", "import", "call", "test", "dynamic"] }
+        },
+        "required": ["path", "line", "kind"]
+      }
+    }
+  },
+  "required": ["symbol", "uses"]
+}

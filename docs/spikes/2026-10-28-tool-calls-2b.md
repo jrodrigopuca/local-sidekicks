@@ -26,6 +26,13 @@ this repo?".
 | 1 | ollama por defecto (`num_ctx` 4096) | 223 s | 0 | "No tengo herramientas de acceso a archivos" |
 | 2 | `num_ctx` 16384 | 586 s | 2 | Correcto, encontró el acceso dinámico |
 | 3 | 16384 + `agent.title.disable` | **35 s** | 1 | Correcto, encontró el acceso dinámico |
+| 4 | igual que 3, **modelo actualizado** (digest `dfaf2605162e`, 3,1 GB), caché frío | 70 s | 1 | Correcto, con un error: `src/report.ts` en vez de `src/lib/report.ts` |
+
+La corrida 4 es la que vale como referencia de ahora en más: modelo nuevo y
+sin caché de prefijo (los ~27 s de procesar los 11K en frío están incluidos).
+El path mal escrito es un modo de falla a esperar de un modelo chico: el
+harness tiene que verificar que cada path reportado existe, no solo que el
+juez lo encuentre razonable.
 
 Lo que explica cada salto, con la evidencia:
 
@@ -43,11 +50,9 @@ Lo que explica cada salto, con la evidencia:
 ## Los números que condicionan el diseño
 
 - **Piso de contexto de opencode: ~11.000 tokens** con el agente cargado y
-  las herramientas de escritura negadas. Es system prompt propio de opencode +
-  schemas de las herramientas que quedan + entorno. Nuestro prompt son 150 de
-  esos 11.000: **el presupuesto de tokens del agente es irrelevante al lado del
-  del host.** Qué hay exactamente en esos 11K y si opencode deja recortarlo
-  (reemplazar su system prompt por agente) es la próxima pregunta.
+  las herramientas de escritura negadas. Nuestro prompt son 150 de esos
+  11.000. Qué hay adentro y cómo bajarlo a 1.310 está en "Los 11K abiertos",
+  más abajo.
 - **Velocidad del 2B acá:** ~22 tok/s de generación, ~400 tok/s de prompt
   eval. Procesar los 11K en frío son ~27 s; ollama cachea el prefijo entre
   sesiones (la corrida 3 reprocesó 4 tokens), así que corridas repetidas con
@@ -73,9 +78,59 @@ Lo que explica cada salto, con la evidencia:
 - El modelo con `tool_call: true` en el provider es necesario para que
   opencode le ofrezca herramientas.
 
+## Los 11K abiertos (corridas 5-7, misma tarde)
+
+Con `tools/log-proxy.py` entre opencode y ollama se capturó el request
+exacto y se midió cada pieza en tokens pidiéndoselos a ollama por separado
+(la suma dio 11.046 contra 11.047 reportados: la medición cierra).
+
+| Pieza del request | Tokens | % |
+|---|---:|---:|
+| Nuestro prompt (`probe.md`) | 99 | 0,9 |
+| `# Your Model` + entorno (`<env>`, fecha, cwd) | ~90 | 0,8 |
+| **Catálogo "Code Mode"** — firmas TypeScript de 7 herramientas internas de opencode (`session_rename`, `worktree_create`, `models`, recursos MCP…) para llamar vía `execute` | **9.148** | **82,8** |
+| Schemas JSON de las 7 herramientas ofrecidas (`glob`, `grep`, `read`, `question`, `skill`, `websearch`, `execute`) | 1.682 | 15,2 |
+| Mensaje del usuario | 15 | 0,1 |
+
+**El 83 % del piso es un catálogo que un sidekick nunca va a usar, y se
+apaga desde el agente.** Negando `execute` (más `question`, `skill` y
+`websearch`) en `permission:`, el mismo request bajó a:
+
+| | Tokens |
+|---|---:|
+| system (nuestro prompt + modelo + entorno) | 428 |
+| tools (`glob`, `grep`, `read`) | 867 |
+| usuario | 15 |
+| **Total** | **1.310** (antes 11.047) |
+
+Corrida 7 con esa configuración, fixture limpio, caché frío: **53 s**, un
+`grep`, 10 coincidencias, respuesta correcta. El `codemode: boolean` del
+esquema de config es por servidor MCP; para el grupo interno de opencode no
+hay toggle — el deny de `execute` es la vía.
+
+Tres hallazgos laterales de estas corridas, todos para el harness:
+
+- **`opencode run` se cuelga a veces al arrancar** cuando usa el servicio de
+  fondo (`opencode serve --service`): hace `GET /api/tags` en loop y nunca
+  manda el chat. Con `--standalone` (servidor privado por corrida) no pasó.
+  El harness corre siempre con `--standalone`.
+- **Las salidas del harness no pueden vivir dentro del fixture.** En la
+  corrida 6, `dumps/` y `run*.jsonl` estaban en la carpeta del fixture y el
+  `grep` del modelo devolvió 31 KB de JSON ajeno; el 2B entró en un loop de
+  generación, opencode cortó la request (`BrokenPipe`) y la reintentó cuatro
+  veces, 18 minutos cada una, sin tope. Con el fixture limpio (corrida 7) no
+  se repitió. Una muestra: hipótesis, no prueba. Dos reglas salen igual:
+  salidas fuera del fixture, y tope de tiempo por corrida con `timeout -s
+  KILL` (opencode ignora el SIGTERM de `timeout`).
+- La actualización de la app de ollama trajo ollama **0.40.12** y un runner
+  `mlx` en Apple Silicon (antes llama.cpp). El log de ollama ya no muestra
+  los conteos de tokens por request; el proxy es la forma de medir ahora.
+
 ## Pendiente que abre
 
-1. Ver qué hay en los 11K del host y si se puede recortar por agente.
+1. ~~Ver qué hay en los 11K del host y si se puede recortar por agente.~~
+   Hecho: 1.310 tokens con `execute: deny`.
 2. Hacer que el formato de salida se respete (¿regla al final del prompt?
    ¿ejemplo completo? ¿validar en el harness y reintentar?).
-3. Repetir la tanda con el `qwen3.5:2b` nuevo y anotar el digest.
+3. ~~Repetir la tanda con el `qwen3.5:2b` nuevo y anotar el digest.~~ Hecho:
+   corrida 4.

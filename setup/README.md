@@ -119,8 +119,20 @@ schemas). Medido en el spike 1, corridas 5-7.
 
 En la máquina que sirve: `OLLAMA_HOST=0.0.0.0` en el entorno del servidor de
 ollama y el puerto 11434 abierto en la red local. Con la app de macOS, el
-servidor arranca con `OLLAMA_HOST:http://127.0.0.1:11434` (visto en el log de
-esta máquina); la app tiene un ajuste para exponerlo a la red — a verificar
-que es ese el que cambia ese valor. En la que corre el harness,
+servidor arranca con `OLLAMA_HOST:http://127.0.0.1:11434`; expuesto desde el
+ajuste de la app, el puerto pasa a aceptar conexiones de la LAN (verificado el
+2026-10-28: antes, `connection refused` desde la otra máquina; después,
+`/api/version` responde). Comprobación desde la que corre el harness:
+
+```bash
+curl -s http://<ip>:11434/api/version          # responde → listo
+./runner/run-remote.sh <ip> qwen3.5:9b 3        # la tanda completa, resultados en runs/
+```
+
+El tag del modelo grande es **`qwen3.5:9b`** (9,7B, cuantización `nvfp4` en
+esa máquina, digest `d63f830f28d5`); no existe un `qwen3.5:8b`. Donde los
+ADR dicen "8B" léase esa clase de tamaño. El runner manda `num_ctx`,
+`temperature` y `think` en cada request, así que esa máquina no necesita
+alias ni ajuste de contexto para el runner — solo para opencode vía `/v1`. En la que corre el harness,
 el `baseURL` del provider pasa a `http://<ip-de-la-otra>:11434/v1`. Pendiente
 de verificar en la práctica (ADR-0003).

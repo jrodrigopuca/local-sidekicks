@@ -76,7 +76,9 @@ determinista y una regla de prompt es una probabilidad.
 
 ## Pendiente que abre
 
-1. Misma tanda (find-usages + update-vitest-test) contra el 8B remoto.
+1. ~~Misma tanda (find-usages + update-vitest-test) contra el 8B remoto.~~
+   Hecho la misma noche contra `qwen3.5:9b` (no hay tag 8b): 3/3 en las dos
+   tareas, y 3/3 también **sin** la regla del import — ver `MODELOS.md`.
 2. Segunda tarea de escritura ("hacer un cambio en un componente React")
    con el mismo método: fixture, verificación externa, 3 corridas.
 3. El caso "reemplazó el import en vez de extenderlo" (tanda 5, corrida 3):

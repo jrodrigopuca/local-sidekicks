@@ -1,0 +1,4 @@
+update-vitest-test-1    25s  steps=5  tools=read,read,edit,edit,run_tests  tokens in/out=6864/442  format=n/a changed=src/lib/format.test.ts diff=OK verify=rc0 passed=2 failed=0 -> OK
+update-vitest-test-2    16s  steps=5  tools=read,read,edit,edit,run_tests  tokens in/out=6837/431  format=n/a changed=src/lib/format.test.ts diff=OK verify=rc0 passed=2 failed=0 -> OK
+update-vitest-test-3    15s  steps=5  tools=read,read,edit,edit,run_tests  tokens in/out=6864/442  format=n/a changed=src/lib/format.test.ts diff=OK verify=rc0 passed=2 failed=0 -> OK
+== update-vitest-test on qwen3.5:9b: format 0/3, mean 18s, mean out tokens 438

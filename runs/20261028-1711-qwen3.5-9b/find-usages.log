@@ -1,0 +1,4 @@
+find-usages-1    32s  steps=2  tools=grep                tokens in/out=2326/657  format=OK recall=10/10 extra=0 invented=0
+find-usages-2    23s  steps=2  tools=grep                tokens in/out=2258/601  format=OK recall=10/10 extra=0 invented=0
+find-usages-3    23s  steps=2  tools=grep                tokens in/out=2287/618  format=OK recall=10/10 extra=0 invented=0
+== find-usages on qwen3.5:9b: format 3/3, mean 26s, mean out tokens 625

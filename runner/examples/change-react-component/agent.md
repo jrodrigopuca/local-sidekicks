@@ -1,6 +1,6 @@
 ---
 description: Make a described change to a React component without breaking what exists
-tools: [read, grep, glob, edit, write, run_tests]
+tools: [read, grep, edit, write, run_tests]
 temperature: 0.2
 think: false
 num_ctx: 16384

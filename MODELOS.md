@@ -94,6 +94,30 @@ Fuentes: `runs/20261028-1700-qwen3.5-2b-16k/`, `runs/20261028-1711-qwen3.5-9b/`
   durante esa tanda); los de bonsai sí. Repetir el nivel 3 del 9B con la
   máquina quieta antes de citar una relación de tiempos exacta.
 
+## Velocidad de bonsai-2:27b: qué la mueve y qué no (misma noche)
+
+Medido con un prompt de 1.551 tokens directo a `/api/chat`, y después con la
+tarea de nivel 3 completa (3 corridas por fila; todas 3/3 correctas).
+
+| Palanca | Prefill | Generación | Nivel 3 por corrida |
+|---|---:|---:|---:|
+| Base | 52 tok/s | 10,7 tok/s | 112-134 s |
+| **`OLLAMA_FLASH_ATTENTION=1`** en la máquina que sirve | **81 tok/s** (+56 %) | 11,1 | — |
+| + runner: sin `glob` en el agente, salida de `run_tests` compactada a errores y resumen | — | — | **100-109 s** (−15 %) |
+| + reglas de prompt "leé directo, no busques" y "old_string corto" | — | — | 119-126 s (**peor**): el modelo las ignoró y agregó un edit |
+
+Con flash attention el prefill deja de ser el problema (1-6 s por paso); el
+tiempo queda en la **generación**: ~800 tokens de salida por corrida a 10,7
+tok/s ≈ 75 de los ~105 s, con el primer `edit` solo (~340 tokens, 32 s) como
+mayor costo. Eso no lo baja ningún prompt — las reglas de *forma de
+trabajar* no prendieron en bonsai (las de *criterio*, como la del `&&`, sí).
+Lo que sí lo bajaría: un modelo con menos parámetros por token
+(`bonsai-2:9b`, 3,2 GB, sin medir) o decodificación especulativa, que
+ollama no ofrece para este modelo. Tres cosas más, medidas: el caché de
+prefijo funciona con bonsai (segunda llamada idéntica, 0,2 s); el 9B y
+bonsai **no conviven** en 16 GB (cargar uno desaloja al otro, ~8 GB de
+recarga por cambio); y `num_ctx` no afecta la velocidad, solo la memoria.
+
 ## Cómo actualizarlo
 
 `./runner/run-remote.sh <ip> <modelo> 3` deja una carpeta en `runs/` con

@@ -129,6 +129,15 @@ curl -s http://<ip>:11434/api/version          # responde → listo
 ./runner/run-remote.sh <ip> qwen3.5:9b 3        # la tanda completa, resultados en runs/
 ```
 
+**Flash attention en la máquina que sirve** (`launchctl setenv
+OLLAMA_FLASH_ATTENTION 1` + reiniciar la app; comprobar en la primera línea
+de `~/.ollama/logs/server.log`): con `bonsai-2:27b` (GGUF → llama.cpp) el
+prefill pasó de 52 a 81 tok/s con un prompt de 1.551 tokens, la generación
+quedó igual (10,7 → 11,1 tok/s). Medido el 2026-10-28, una llamada por lado.
+El 9B corre en `mlx` y no se midió. Ojo: tras `launchctl setenv` y reinicio
+la app volvió a escuchar solo en `127.0.0.1`; `OLLAMA_HOST=0.0.0.0` va por la
+misma vía o se reactiva en la app.
+
 El tag del modelo grande es **`qwen3.5:9b`** (9,7B, cuantización `nvfp4` en
 esa máquina, digest `d63f830f28d5`); no existe un `qwen3.5:8b`. Donde los
 ADR dicen "8B" léase esa clase de tamaño. El runner manda `num_ctx`,

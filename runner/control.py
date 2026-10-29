@@ -204,9 +204,17 @@ def tool_run_tests(root, args):
         r = subprocess.run(cmd, shell=True, cwd=root, capture_output=True, text=True, timeout=180)
     except subprocess.TimeoutExpired:
         return "Tests timed out after 180 s."
-    out = (r.stdout + r.stderr).strip().splitlines()
-    tail = "\n".join(out[-40:])
-    return "exit code %d\n%s" % (r.returncode, tail)
+    out = [l for l in (r.stdout + r.stderr).splitlines() if l.strip() and not l.startswith("npm notice")]
+    if r.returncode == 0:
+        # green: the summary is all the model needs; every extra token is prefill
+        keep = [l for l in out if any(k in l for k in ("Test Files", "Tests ", "passed"))][-3:] or out[-3:]
+    else:
+        # red: compiler errors, failing test names, assertion lines and the summary
+        keep = [l for l in out if any(k in l for k in ("error TS", "FAIL", "×", "✗", "AssertionError", "Error:", "Expected", "Received",
+                                                      "expected", "Test Files", "Tests ", "❯ src", "ReferenceError", "TypeError", "SyntaxError"))][:40]
+        if not keep:
+            keep = out[-40:]
+    return "exit code %d\n%s" % (r.returncode, "\n".join(l.rstrip() for l in keep))
 
 
 TOOLS = {
@@ -341,7 +349,11 @@ def run_once(model, meta, prompt, schema, root, user_prompt, timeout):
         msg = r["message"]
         calls = msg.get("tool_calls") or []
         log["steps"].append({"step": step, "tool_calls": len(calls), "prompt_tokens": r.get("prompt_eval_count", 0),
-                             "eval_tokens": r.get("eval_count", 0), "secs": round(r.get("total_duration", 0) / 1e9, 1)})
+                             "eval_tokens": r.get("eval_count", 0), "secs": round(r.get("total_duration", 0) / 1e9, 1),
+                             # where the time goes: prefill vs generation vs loading the model
+                             "prefill_secs": round(r.get("prompt_eval_duration", 0) / 1e9, 1),
+                             "gen_secs": round(r.get("eval_duration", 0) / 1e9, 1),
+                             "load_secs": round(r.get("load_duration", 0) / 1e9, 1)})
         messages.append(msg)
         if not calls:
             final_text = msg.get("content", "")

@@ -56,7 +56,7 @@ sin correr los tests.
 |---|---|---|---|---|---|
 | Oráculo débil (sin exigir markup idéntico con `discount={0}`) | 0/1 | 3/3 | — | — | — |
 | **Oráculo estricto**, sin regla de React | — | **0/3** — las tres escribieron `{discount && discount > 0 && …}`, que renderiza un `0` suelto | sin medir | — | — |
-| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **4/12** a temp 0,2 — por tandas 2/3, 0/3, 2/6 — y **5/12 con el preset oficial** (temp 0,7 · top_p 0,8 · top_k 20 · presence 1,5): un tercio largo, la temperatura no es la variable ⁴ | **12/12** en cuatro tandas, la última con su preset oficial (temp 0,7 · top_p 0,8 · top_k 20 · presence 1,5) — ternario con `: null` siempre ⁶ | **0/3** ² | **0/3** con `think:false` · **0/3** con `think:true` ³ · **0/3** con ollama 0.40.13 y 8K · **1/3 con el preset de Google + `think_after_tool`** ⁵ |
+| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **4/12** a temp 0,2 — por tandas 2/3, 0/3, 2/6 — **5/12 con el preset oficial** (temp 0,7 · top_p 0,8 · top_k 20 · presence 1,5) y **0/6 a temperatura 0, las seis idénticas**: el `&&` es lo que el modelo más cree; el ternario es ruido ⁴ | **12/12** en cuatro tandas, la última con su preset oficial (temp 0,7 · top_p 0,8 · top_k 20 · presence 1,5) — ternario con `: null` siempre ⁶ | **0/3** ² | **0/3** con `think:false` · **0/3** con `think:true` ³ · **0/3** con ollama 0.40.13 y 8K · **1/3 con el preset de Google + `think_after_tool`** ⁵ |
 | Pasos / tiempo | 10 (tope) | 6 · **21-33 s** (máquina quieta; 16-18 s de generación) | 9-10 · 100-134 s | 10 (tope) · 71-81 s | 5 · 28-37 s · con razonamiento 64-1.273 s |
 
 ² Las tres escribieron `discount > 0` con `discount?: number`, `tsc` falló
@@ -82,7 +82,15 @@ siempre. Lección de método: tres corridas detectan un 0/3 o un 3/3; para
 una tasa intermedia hacen falta diez o más, y hoy las tuvimos. Con el
 preset oficial (`change-react-component-preset-oficial-x12/`): 5/12, mismos
 tiempos (19-33 s), misma línea en disputa; 9/24 acumulado en dos
-temperaturas.
+temperaturas. **A temperatura 0** (`…-temp0-x6/`): seis corridas con el
+diff **byte a byte idéntico** (mismo hash las seis, 18-33 s) y las seis con
+`{discount && discount > 0 && <li>…`. La decodificación greedy es
+determinista en esta máquina, y lo que el 9B "más cree" para esa línea es el
+`&&`: el ternario correcto solo aparece como ruido de muestreo. Es la
+distinción que buscábamos — **no es que no siempre lo elija: no lo sabe**, y
+la regla del prompt no le da vuelta la prior. Para esta clase de criterio el
+9B no se arregla con parámetros; se arregla con otro modelo o con una guarda
+(un lint de `{number && <jsx>}` en el oráculo, que ya tenemos).
 ⁵ Primera medición justa de gemma (`…-preset-oficial-think-after-tool/`):
 temp 1,0 · top_p 0,95 · top_k 64 como pide Google, `num_ctx` 8K, y razonar
 solo en el turno posterior a un resultado de herramienta (workaround del

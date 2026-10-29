@@ -1,0 +1,4 @@
+find-usages-1    34s  steps=2  tools=grep                tokens in/out=1944/548  format=OK recall=10/10 extra=0 invented=0
+find-usages-2    32s  steps=2  tools=grep                tokens in/out=1962/566  format=OK recall=10/10 extra=0 invented=0
+find-usages-3    27s  steps=2  tools=grep                tokens in/out=1968/572  format=OK recall=10/10 extra=0 invented=0
+== find-usages on gemma4:12b: format 3/3, mean 31s, mean out tokens 562

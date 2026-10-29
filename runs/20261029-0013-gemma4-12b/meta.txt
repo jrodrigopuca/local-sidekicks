@@ -1,0 +1,5 @@
+host: http://192.168.1.144:11434
+model: gemma4:12b
+date: 2026-10-29T00:13:39-03:00
+ollama: {"version":"0.40.6"}
+digest: c7597fc90b86

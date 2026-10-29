@@ -441,6 +441,8 @@ def main():
     ap.add_argument("--n", type=int, default=1)
     ap.add_argument("--out", required=True)
     ap.add_argument("--timeout", type=int, default=300, help="seconds per model call")
+    ap.add_argument("--think", choices=["true", "false"], help="override the agent's think setting (gemma4 on ollama 0.40.6 "
+                                                               "returns empty turns after a tool result with think:false)")
     ap.add_argument("--expect", help="JSON list of 'path:line' that a correct answer's uses[] must contain")
     ap.add_argument("--reset", action="store_true", help="git checkout -- . && git clean -fd in --cwd before each run")
     ap.add_argument("--verify", help="shell command run in --cwd AFTER each run; its exit code and a vitest-style "
@@ -451,6 +453,8 @@ def main():
                                           "gamed (a 2B wrote a test that never called the function under test)")
     a = ap.parse_args()
     meta, prompt, schema = parse_agent(a.agent)
+    if a.think:
+        meta["think"] = a.think == "true"
     root = os.path.realpath(a.cwd)
     os.makedirs(a.out, exist_ok=True)
     expect = set(json.load(open(a.expect))) if a.expect else None

@@ -1,0 +1,4 @@
+change-react-component-1    37s  steps=5  tools=grep,read,read,edit  tokens in/out=5723/392  format=n/a changed=src/components/Cart.tsx diff=OK verify=rc1 passed=None failed=1 -> NO
+change-react-component-2    32s  steps=5  tools=grep,read,read,edit  tokens in/out=5723/400  format=n/a changed=src/components/Cart.tsx diff=OK verify=rc1 passed=None failed=1 -> NO
+change-react-component-3    28s  steps=5  tools=grep,read,read,edit  tokens in/out=5723/396  format=n/a changed=src/components/Cart.tsx diff=OK verify=rc1 passed=None failed=1 -> NO
+== change-react-component on gemma4:12b: format 0/3, mean 32s, mean out tokens 396

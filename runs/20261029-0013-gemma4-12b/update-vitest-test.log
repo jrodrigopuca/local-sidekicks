@@ -1,0 +1,4 @@
+update-vitest-test-1    44s  steps=8  tools=read,read,edit,edit,edit,edit,read,edit,read,edit  tokens in/out=9220/633  format=n/a changed=src/lib/format.test.ts diff=NO verify=rc0 passed=1 failed=0 -> NO  ERR max_steps reached
+update-vitest-test-2    28s  steps=6  tools=read,read,edit,edit,run_tests  tokens in/out=5913/310  format=n/a changed=src/lib/format.test.ts diff=OK verify=rc0 passed=2 failed=0 -> OK
+update-vitest-test-3    38s  steps=8  tools=read,read,edit,edit,read,edit,run_tests  tokens in/out=9690/682  format=n/a changed=src/lib/format.test.ts diff=OK verify=rc0 passed=2 failed=0 -> OK
+== update-vitest-test on gemma4:12b: format 0/3, mean 36s, mean out tokens 541

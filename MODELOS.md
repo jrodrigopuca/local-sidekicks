@@ -56,8 +56,8 @@ sin correr los tests.
 |---|---|---|---|---|---|
 | Oráculo débil (sin exigir markup idéntico con `discount={0}`) | 0/1 | 3/3 | — | — | — |
 | **Oráculo estricto**, sin regla de React | — | **0/3** — las tres escribieron `{discount && discount > 0 && …}`, que renderiza un `0` suelto | sin medir | — | — |
-| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **2/3** (una ignoró la regla) | **3/3** — ternario con `: null` las tres veces | **0/3** ² | **0/3** con `think:false` (`&&` y turno vacío sin tests) · **0/3** con `think:true` ³ |
-| Pasos / tiempo | 10 (tope) | 6-8 · 38-150 s ¹ | 9-10 · 112-134 s | 10 (tope) · 71-81 s | 5 · 28-37 s · con razonamiento 121-1.273 s |
+| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **2/6** — 2/3 la primera noche, **0/3 al repetir con la máquina quieta**: las tres con `{discount && discount > 0 && (` ⁴ | **9/9** en tres tandas — ternario con `: null` siempre | **0/3** ² | **0/3** con `think:false` (`&&` y turno vacío sin tests) · **0/3** con `think:true` ³ · **0/3** con ollama 0.40.13 y 8K |
+| Pasos / tiempo | 10 (tope) | 6 · **21-33 s** (máquina quieta; 16-18 s de generación) | 9-10 · 100-134 s | 10 (tope) · 71-81 s | 5 · 28-37 s · con razonamiento 64-1.273 s |
 
 ² Las tres escribieron `discount > 0` con `discount?: number`, `tsc` falló
 con `TS18048: 'discount' is possibly 'undefined'`, y **repitieron el mismo
@@ -72,6 +72,11 @@ number` → `TS18048` (el mismo tropiezo que bonsai 9B) y además tocó el test
 con un formato de moneda inventado; la tercera, funcionalmente correcta
 (6/6 tests), cayó por el mismo `TS18048` y terminó en `Connection reset by
 peer` — la máquina con 16,5 GB cargados en 16 soltando conexiones.
+⁴ Mismo agente, misma regla, misma temperatura 0,2: una noche 2/3, la
+siguiente 0/3. Que el 9B siga la regla del `&&` es una moneda cargada, no
+una propiedad; con seis muestras la tasa honesta es un tercio. Las tres
+corridas de hoy tipan bien (`discount ? … : 0`), hacen el cálculo bien, y
+caen solo en el `0` suelto. El 27B ternario, con 9 corridas sobre 9, no.
 
 Las tres corridas de bonsai siguieron la misma secuencia: primer `edit`,
 `tsc` falla con `TS18048: 'discount' is possibly 'undefined'`, dos edits
@@ -142,9 +147,10 @@ Fuentes: `runs/20261028-1700-qwen3.5-2b-16k/`, `runs/20261028-1711-qwen3.5-9b/`
   prompt), 6/6 tests y typecheck rojo. Veredicto: `gemma4:12b` vía ollama no
   sirve hoy para tareas de nivel 3 con este runner; para niveles 1-2 anda,
   pero el `qwen3.5:9b` lo hace igual, más rápido y sin razonamiento.
-- Los tiempos del 9B en nivel 3 no son limpios (la máquina bajaba bonsai
-  durante esa tanda); los de bonsai sí. Repetir el nivel 3 del 9B con la
-  máquina quieta antes de citar una relación de tiempos exacta.
+- Tiempos limpios del nivel 3, medidos con la máquina quieta: **qwen 9B
+  21-33 s, bonsai 27B 100-109 s** — 3 a 5×. Ese es el precio del criterio
+  en esa máquina: el 9B responde en medio minuto y acierta el `&&` una de
+  cada tres veces; el 27B tarda minuto y medio y no falla.
 
 ## Velocidad de bonsai-2:27b: qué la mueve y qué no (misma noche)
 

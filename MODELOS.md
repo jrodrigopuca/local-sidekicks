@@ -56,7 +56,7 @@ sin correr los tests.
 |---|---|---|---|---|---|
 | Oráculo débil (sin exigir markup idéntico con `discount={0}`) | 0/1 | 3/3 | — | — | — |
 | **Oráculo estricto**, sin regla de React | — | **0/3** — las tres escribieron `{discount && discount > 0 && …}`, que renderiza un `0` suelto | sin medir | — | — |
-| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **4/12** a temp 0,2 — por tandas 2/3, 0/3, 2/6 — y **5/12 con el preset oficial** (temp 0,7 · top_p 0,8 · top_k 20 · presence 1,5): un tercio largo, la temperatura no es la variable ⁴ | **9/9** en tres tandas — ternario con `: null` siempre | **0/3** ² | **0/3** con `think:false` · **0/3** con `think:true` ³ · **0/3** con ollama 0.40.13 y 8K · **1/3 con el preset de Google + `think_after_tool`** ⁵ |
+| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **4/12** a temp 0,2 — por tandas 2/3, 0/3, 2/6 — y **5/12 con el preset oficial** (temp 0,7 · top_p 0,8 · top_k 20 · presence 1,5): un tercio largo, la temperatura no es la variable ⁴ | **12/12** en cuatro tandas, la última con su preset oficial (temp 0,7 · top_p 0,8 · top_k 20 · presence 1,5) — ternario con `: null` siempre ⁶ | **0/3** ² | **0/3** con `think:false` · **0/3** con `think:true` ³ · **0/3** con ollama 0.40.13 y 8K · **1/3 con el preset de Google + `think_after_tool`** ⁵ |
 | Pasos / tiempo | 10 (tope) | 6 · **21-33 s** (máquina quieta; 16-18 s de generación) | 9-10 · 100-134 s | 10 (tope) · 71-81 s | 5 · 28-37 s · con razonamiento 64-1.273 s |
 
 ² Las tres escribieron `discount > 0` con `discount?: number`, `tsc` falló
@@ -94,6 +94,14 @@ final (tope de pasos). Las otras dos: una no editó (2.048 tokens de
 razonamiento sin acción, igual que antes) y otra escribió el `&&` y terminó
 sin correr los tests. Gemma **puede**; lo que no tiene hoy en ollama es
 consistencia: 1/3 con varianza de 34 a 121 s.
+⁶ Bonsai a 0,7 (`change-react-component-preset-oficial/`): 3/3 en 103-125 s,
+misma velocidad que a 0,2, y **tres soluciones distintas y correctas**:
+`const hasDiscount = discount != null && discount > 0`, `const d = discount
+?? 0`, y `discount && discount > 0 ? … : null`. La forma varía con la
+temperatura; el invariante no: estrecha el tipo, ternario con `null`,
+`Math.round` en centavos, y en las tres el primer `run_tests` rojo y el
+segundo verde. Eso es criterio y no suerte de muestreo frío — la distinción
+que en el 9B no se pudo establecer (4/12 a 0,2, 5/12 a 0,7).
 
 Las tres corridas de bonsai siguieron la misma secuencia: primer `edit`,
 `tsc` falla con `TS18048: 'discount' is possibly 'undefined'`, dos edits

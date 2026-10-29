@@ -285,13 +285,24 @@ def parse_agent(path):
 
 
 def chat(model, messages, tools, meta, fmt=None, timeout=300):
+    think = bool(meta.get("think", False))
+    # ollama issue #18861: with think:false, gemma4's template writes nothing
+    # after a tool response and the model may end its turn empty. The
+    # reporter's workaround: think only on the turn right after a tool result.
+    if meta.get("think_after_tool") and messages and messages[-1].get("role") == "tool":
+        think = True
     body = {
         "model": model, "messages": messages, "stream": False,
-        "think": bool(meta.get("think", False)),
+        "think": think,
         "options": {"temperature": float(meta.get("temperature", 0.2)),
                     "num_ctx": int(meta.get("num_ctx", 16384)),
                     "num_predict": int(meta.get("num_predict", 2048))},
     }
+    # Sampling knobs the model cards talk about; only sent when the agent sets them,
+    # so the model's own defaults stay in force otherwise.
+    for k in ("top_p", "top_k", "min_p", "presence_penalty", "repeat_penalty", "seed"):
+        if k in meta:
+            body["options"][k] = float(meta[k]) if k in ("top_p", "min_p", "presence_penalty", "repeat_penalty") else int(meta[k])
     if tools:
         body["tools"] = tools
     if fmt:

@@ -56,7 +56,7 @@ sin correr los tests.
 |---|---|---|---|---|---|
 | Oráculo débil (sin exigir markup idéntico con `discount={0}`) | 0/1 | 3/3 | — | — | — |
 | **Oráculo estricto**, sin regla de React | — | **0/3** — las tres escribieron `{discount && discount > 0 && …}`, que renderiza un `0` suelto | sin medir | — | — |
-| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **4/12** — por tandas 2/3, 0/3, 2/6: un tercio ⁴ | **9/9** en tres tandas — ternario con `: null` siempre | **0/3** ² | **0/3** con `think:false` (`&&` y turno vacío sin tests) · **0/3** con `think:true` ³ · **0/3** con ollama 0.40.13 y 8K |
+| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **4/12** a temp 0,2 — por tandas 2/3, 0/3, 2/6 — y **5/12 con el preset oficial** (temp 0,7 · top_p 0,8 · top_k 20 · presence 1,5): un tercio largo, la temperatura no es la variable ⁴ | **9/9** en tres tandas — ternario con `: null` siempre | **0/3** ² | **0/3** con `think:false` · **0/3** con `think:true` ³ · **0/3** con ollama 0.40.13 y 8K · **1/3 con el preset de Google + `think_after_tool`** ⁵ |
 | Pasos / tiempo | 10 (tope) | 6 · **21-33 s** (máquina quieta; 16-18 s de generación) | 9-10 · 100-134 s | 10 (tope) · 71-81 s | 5 · 28-37 s · con razonamiento 64-1.273 s |
 
 ² Las tres escribieron `discount > 0` con `discount?: number`, `tsc` falló
@@ -79,7 +79,21 @@ tandas: 2/3, 0/3, 2/6. **Un tercio, estable**: que el 9B siga la regla del
 es si escribe `&& (` o `? (` en esa línea — y lo decide el muestreo, no el
 prompt. El 27B ternario, con 9 corridas sobre 9, escribe el ternario
 siempre. Lección de método: tres corridas detectan un 0/3 o un 3/3; para
-una tasa intermedia hacen falta diez o más, y hoy las tuvimos.
+una tasa intermedia hacen falta diez o más, y hoy las tuvimos. Con el
+preset oficial (`change-react-component-preset-oficial-x12/`): 5/12, mismos
+tiempos (19-33 s), misma línea en disputa; 9/24 acumulado en dos
+temperaturas.
+⁵ Primera medición justa de gemma (`…-preset-oficial-think-after-tool/`):
+temp 1,0 · top_p 0,95 · top_k 64 como pide Google, `num_ctx` 8K, y razonar
+solo en el turno posterior a un resultado de herramienta (workaround del
+issue #18861). **Su primera corrida correcta en nivel 3, y el mejor diff de
+todos los modelos**: `const currentDiscount = discount ?? 0` (estrecha el
+tipo de una) y `{currentDiscount > 0 ? … : null}`; corrió los tests, corrigió
+y volvió a correrlos, 6/6 y typecheck en verde — en 121 s y sin mensaje
+final (tope de pasos). Las otras dos: una no editó (2.048 tokens de
+razonamiento sin acción, igual que antes) y otra escribió el `&&` y terminó
+sin correr los tests. Gemma **puede**; lo que no tiene hoy en ollama es
+consistencia: 1/3 con varianza de 34 a 121 s.
 
 Las tres corridas de bonsai siguieron la misma secuencia: primer `edit`,
 `tsc` falla con `TS18048: 'discount' is possibly 'undefined'`, dos edits
@@ -147,9 +161,14 @@ Fuentes: `runs/20261028-1700-qwen3.5-2b-16k/`, `runs/20261028-1711-qwen3.5-9b/`
   **no editó nunca** — leyó y razonó 2.048 tokens hasta el tope de
   `num_predict` sin una acción — y en la que editó, `discount > 0 &&` con
   `discount?: number` (`TS18048` y el `&&` juntos, con la regla en el
-  prompt), 6/6 tests y typecheck rojo. Veredicto: `gemma4:12b` vía ollama no
-  sirve hoy para tareas de nivel 3 con este runner; para niveles 1-2 anda,
-  pero el `qwen3.5:9b` lo hace igual, más rápido y sin razonamiento.
+  prompt), 6/6 tests y typecheck rojo. Con el preset de Google y el
+  workaround del turno vacío (nota ⁵): **1/3**, y esa una es el mejor diff
+  de la serie. Veredicto corregido: `gemma4:12b` **sabe** hacer el nivel 3 —
+  el problema es la consistencia en ollama hoy (loops de razonamiento,
+  issues #18861 y #16562 abiertos), no el criterio. Para niveles 1-2 el
+  `qwen3.5:9b` lo hace igual, más rápido y sin razonamiento; para el 3,
+  bonsai 27B sigue siendo el único 9/9. Revisar gemma cuando ollama cierre
+  #18861.
 - Tiempos limpios del nivel 3, medidos con la máquina quieta: **qwen 9B
   21-33 s, bonsai 27B 100-109 s** — 3 a 5×. Ese es el precio del criterio
   en esa máquina: el 9B responde en medio minuto y acierta el `&&` una de
@@ -178,6 +197,37 @@ ollama no ofrece para este modelo. Tres cosas más, medidas: el caché de
 prefijo funciona con bonsai (segunda llamada idéntica, 0,2 s); el 9B y
 bonsai **no conviven** en 16 GB (cargar uno desaloja al otro, ~8 GB de
 recarga por cambio); y `num_ctx` no afecta la velocidad, solo la memoria.
+
+## Lo que dicen los autores (leído el 2026-10-29, fuentes primarias)
+
+Todo lo de arriba se midió con `temperature: 0.2` y los demás parámetros en
+el default del modelo. Las model cards recomiendan otra cosa; esto es lo que
+hay que probar antes de dar un modelo por bueno o malo.
+
+| Modelo | Preset recomendado (sin razonamiento) | Con razonamiento | Notas del autor |
+|---|---|---|---|
+| [`Qwen3.5-9B`](https://huggingface.co/Qwen/Qwen3.5-9B) | temp 0.7 · top_p 0.8 · top_k 20 · min_p 0 · presence 1.5 | general: temp 1.0 · top_p 0.95 · presence 1.5; **código preciso: temp 0.6 · presence 0** | `presence_penalty` 0-2 contra repeticiones, "puede mezclar idiomas y bajar algo el rendimiento"; no soporta `/no_think` (verificado por nosotros); para tool use recomiendan el parser `qwen3_coder` en vLLM/SGLang |
+| [`Ternary-Bonsai-2-27B`](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf) | temp 0.7 · top_p 0.8 · top_k 20 · presence 1.5 (igual que Qwen: deriva de **Qwen3.8-27B**, arquitectura sin cambios) | temp 1.0 · top_p 0.95 · min_p 0.05 · presence 0 | Benchmarks propios vs FP16: código 89,4 vs 89,1 (LiveCodeBench 90,07 vs 90,05), **tool calling BFCL 74,9 vs 76,7** — coincide con lo medido: criterio intacto, herramientas un poco más torpes. Avisa que **llama.cpp estándar carga el Q2_0 "sin aviso y produce basura"**; ollama 0.40 trae los kernels (nuestros 9/9 lo prueban) |
+| [`gemma4:12b`](https://ollama.com/library/gemma4:12b) | temp 1.0 · top_p 0.95 · top_k 64, "para todos los usos"; Unsloth **desaconseja temperaturas bajas** | ídem | Lo corrimos a 0,2: en contra de la recomendación, y con razonamiento es receta de loop |
+
+Y lo que ya sabíamos por síntoma tiene nombre y número en ollama:
+
+- **Turno vacío de gemma con `think:false` tras un resultado de herramienta**:
+  [#18861](https://github.com/ollama/ollama/issues/18861) (abierto; PR #18862
+  sin mergear) y su duplicado [#19044](https://github.com/ollama/ollama/issues/19044).
+  Causa: el renderer de gemma4 no escribe nada después de un tool response si
+  el razonamiento está apagado, y el modelo a veces cierra el pensamiento
+  vacío con un token de tool call y termina. Workaround del reporte: razonar
+  solo en el turno siguiente a un tool result — implementado en el runner como
+  `think_after_tool: true`.
+- **"gemma4:12b prácticamente inusable en ollama en Apple Silicon"**:
+  [#16562](https://github.com/ollama/ollama/issues/16562), abierto desde
+  junio, sin diagnóstico de los mantenedores; generaciones de 8 minutos,
+  cuelgues, respuestas vacías, "no usable" en 0.32-0.33. Nuestros 1.273 s y
+  los 2.048 tokens sin acción son ese issue en 0.40.13.
+- Las comparativas de blogs (qwen 9B vs gemma 12B) son direccionales y
+  contradictorias entre sí; la única que coincide con nuestra medición es la
+  de consenso: qwen 9B para tool calling, gemma para multimodal.
 
 ## Cómo actualizarlo
 

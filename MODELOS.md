@@ -129,9 +129,19 @@ Fuentes: `runs/20261028-1700-qwen3.5-2b-16k/`, `runs/20261028-1711-qwen3.5-9b/`
   carga a 16,5 GB en 16 y hace que la máquina suelte conexiones, y lo que sí
   parece del modelo — razonamiento largo que a veces no termina en acción, y
   el mismo `discount > 0` sin estrechar el tipo que hunde a bonsai 9B.
-  Resuelve niveles 1 y 2 (con razonamiento); en el 3, 0/6. Antes de darlo
-  por malo: actualizar ollama allá (acá hay 0.40.12) y bajar `num_ctx` a 8K
-  para gemma; si con eso el nivel 3 sigue en 0/3, es del modelo.
+  Resuelve niveles 1 y 2 (con razonamiento); en el 3, 0/6. **Repetido con
+  ollama 0.40.13 y `num_ctx` 8K: 0/3 otra vez** (`change-react-component-
+  ollama-nuevo-8k/`). La actualización descartó dos de los tres factores:
+  la sonda del turno vacío con `think:false` dio exactamente lo mismo en
+  0.40.13 (es cómo ollama sirve a Gemma 4 hoy, no un bug de una versión), y
+  con 8K la carga bajó de 16,5 a 7,8 GB sin que nada cambiara en el
+  resultado. Lo que queda es del modelo en este runner: en 2 de 3 corridas
+  **no editó nunca** — leyó y razonó 2.048 tokens hasta el tope de
+  `num_predict` sin una acción — y en la que editó, `discount > 0 &&` con
+  `discount?: number` (`TS18048` y el `&&` juntos, con la regla en el
+  prompt), 6/6 tests y typecheck rojo. Veredicto: `gemma4:12b` vía ollama no
+  sirve hoy para tareas de nivel 3 con este runner; para niveles 1-2 anda,
+  pero el `qwen3.5:9b` lo hace igual, más rápido y sin razonamiento.
 - Los tiempos del 9B en nivel 3 no son limpios (la máquina bajaba bonsai
   durante esa tanda); los de bonsai sí. Repetir el nivel 3 del 9B con la
   máquina quieta antes de citar una relación de tiempos exacta.

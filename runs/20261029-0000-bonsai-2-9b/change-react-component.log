@@ -1,0 +1,4 @@
+change-react-component-1    81s  steps=10  tools=read,read,edit,run_tests,edit,run_tests,edit,run_tests,edit,run_tests  tokens in/out=22659/1853  format=n/a changed=src/components/Cart.tsx diff=OK verify=rc1 passed=None failed=1 -> NO  ERR max_steps reached
+change-react-component-2    71s  steps=10  tools=read,read,edit,run_tests,edit,run_tests,edit,run_tests,edit,read  tokens in/out=22623/1704  format=n/a changed=src/components/Cart.tsx diff=OK verify=rc1 passed=None failed=1 -> NO  ERR max_steps reached
+change-react-component-3    81s  steps=10  tools=read,read,edit,run_tests,edit,run_tests,edit,run_tests,edit,run_tests  tokens in/out=22825/1908  format=n/a changed=src/components/Cart.tsx diff=OK verify=rc1 passed=6 failed=0 -> NO  ERR max_steps reached
+== change-react-component on bonsai-2:9b: format 0/3, mean 77s, mean out tokens 1821

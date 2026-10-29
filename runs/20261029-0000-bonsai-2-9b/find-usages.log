@@ -1,0 +1,4 @@
+find-usages-1    29s  steps=2  tools=grep                tokens in/out=2280/647  format=OK recall=10/10 extra=0 invented=0 path:line=10
+find-usages-2    27s  steps=2  tools=grep                tokens in/out=2268/635  format=OK recall=10/10 extra=0 invented=0 path:line=10
+find-usages-3    27s  steps=2  tools=grep                tokens in/out=2289/655  format=OK recall=9/10 extra=1 invented=1 path:line=10
+== find-usages on bonsai-2:9b: format 3/3, mean 27s, mean out tokens 645

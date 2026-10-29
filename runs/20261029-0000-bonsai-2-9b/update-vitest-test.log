@@ -1,0 +1,4 @@
+update-vitest-test-1    22s  steps=5  tools=read,read,edit,edit,run_tests  tokens in/out=6614/412  format=n/a changed=src/lib/format.test.ts diff=OK verify=rc0 passed=2 failed=0 -> OK
+update-vitest-test-2    13s  steps=4  tools=read,read,write,run_tests  tokens in/out=4965/277  format=n/a changed=src/lib/format.test.ts diff=OK verify=rc0 passed=2 failed=0 -> OK
+update-vitest-test-3    13s  steps=4  tools=read,read,write,run_tests  tokens in/out=4963/269  format=n/a changed=src/lib/format.test.ts diff=OK verify=rc0 passed=2 failed=0 -> OK
+== update-vitest-test on bonsai-2:9b: format 0/3, mean 16s, mean out tokens 319

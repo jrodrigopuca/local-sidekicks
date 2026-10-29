@@ -1,0 +1,102 @@
+{
+ "steps": [
+  {
+   "step": 1,
+   "tool_calls": 1,
+   "prompt_tokens": 545,
+   "eval_tokens": 27,
+   "secs": 1.0,
+   "prefill_secs": 0.1,
+   "gen_secs": 0.9,
+   "load_secs": 0.0
+  },
+  {
+   "step": 2,
+   "tool_calls": 0,
+   "prompt_tokens": 826,
+   "eval_tokens": 219,
+   "secs": 8.6,
+   "prefill_secs": 1.1,
+   "gen_secs": 7.5,
+   "load_secs": 0.0
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "grep",
+   "args": {
+    "pattern": "formatPrice"
+   },
+   "chars": 763,
+   "result": "src/components/Receipt.tsx:1:import { formatPrice, formatDate } from \"../lib/format\";\nsrc/components/Receipt.tsx:4:  return <p>{formatDate(date)}: {formatPrice(cents, \"USD\")}</p>;\nsrc/lib/report.ts:4:  price: (n) => fmt[\"formatPrice\"](n),\nsrc/lib/format.ts:1:export function formatPrice(cents: number, currency = \"ARS\"): string {\nsrc/lib/format.test.ts:2:import { formatPrice } from \"./format\";\nsrc/lib/format.test.ts:4:describe(\"formatPrice\", () => {\nsrc/lib/format.test.ts:6:    expect(formatPrice(123456)).toContain(\"1.234,56\");\nsrc/components/Cart.tsx:1:import { formatPrice } from \"../lib/format\";\nsrc/components/Cart.tsx:10:        <li key={i.name}>{i.name} — {formatPrice(i.cents)}</li>\nsrc/components/Cart.tsx:12:      <li>Total: {formatPrice(total)}</li>"
+  }
+ ],
+ "prompt_tokens": 2268,
+ "eval_tokens": 635,
+ "errors": [],
+ "secs": 27,
+ "text": "{\n  \"symbol\": \"formatPrice\",\n  \"uses\": [\n    {\n      \"path\": \"src/components/Receipt.tsx:1\",\n      \"line\": 1,\n      \"kind\": \"import\"\n    },\n    {\n      \"path\": \"src/components/Receipt.tsx:4\",\n      \"line\": 4,\n      \"kind\": \"call\"\n    },\n    {\n      \"path\": \"src/lib/report.ts:4\",\n      \"line\": 4,\n      \"kind\": \"dynamic\"\n    },\n    {\n      \"path\": \"src/lib/format.ts:1\",\n      \"line\": 1,\n      \"kind\": \"definition\"\n    },\n    {\n      \"path\": \"src/lib/format.test.ts:2\",\n      \"line\": 2,\n      \"kind\": \"import\"\n    },\n    {\n      \"path\": \"src/lib/format.test.ts:4\",\n      \"line\": 4,\n      \"kind\": \"test\"\n    },\n    {\n      \"path\": \"src/lib/format.test.ts:6\",\n      \"line\": 6,\n      \"kind\": \"test\"\n    },\n    {\n      \"path\": \"src/components/Cart.tsx:1\",\n      \"line\": 1,\n      \"kind\": \"import\"\n    },\n    {\n      \"path\": \"src/components/Cart.tsx:10\",\n      \"line\": 10,\n      \"kind\": \"call\"\n    },\n    {\n      \"path\": \"src/components/Cart.tsx:12\",\n      \"line\": 12,\n      \"kind\": \"call\"\n    }\n  ]\n}",
+ "output": {
+  "symbol": "formatPrice",
+  "uses": [
+   {
+    "path": "src/components/Receipt.tsx:1",
+    "line": 1,
+    "kind": "import"
+   },
+   {
+    "path": "src/components/Receipt.tsx:4",
+    "line": 4,
+    "kind": "call"
+   },
+   {
+    "path": "src/lib/report.ts:4",
+    "line": 4,
+    "kind": "dynamic"
+   },
+   {
+    "path": "src/lib/format.ts:1",
+    "line": 1,
+    "kind": "definition"
+   },
+   {
+    "path": "src/lib/format.test.ts:2",
+    "line": 2,
+    "kind": "import"
+   },
+   {
+    "path": "src/lib/format.test.ts:4",
+    "line": 4,
+    "kind": "test"
+   },
+   {
+    "path": "src/lib/format.test.ts:6",
+    "line": 6,
+    "kind": "test"
+   },
+   {
+    "path": "src/components/Cart.tsx:1",
+    "line": 1,
+    "kind": "import"
+   },
+   {
+    "path": "src/components/Cart.tsx:10",
+    "line": 10,
+    "kind": "call"
+   },
+   {
+    "path": "src/components/Cart.tsx:12",
+    "line": 12,
+    "kind": "call"
+   }
+  ]
+ },
+ "format_ok": true,
+ "invented": [],
+ "path_with_line": 10,
+ "recall": [
+  10,
+  10
+ ],
+ "extra": []
+}

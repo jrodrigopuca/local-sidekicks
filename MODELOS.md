@@ -12,39 +12,51 @@ fixtures no dice nada. Formato de la tabla: igual que `interaction/MODELOS.md`.
 | `qwen3.5:2b` (alias `2b-16k`, Q8/mxfp8) | M1 8 GB, local | 0.40.12 | `0817328c8f11` |
 | `qwen3.5:9b` (nvfp4) | 192.168.1.144 por red | 0.40.6 | `d63f830f28d5` |
 | `bonsai-2:27b` (ternario, Q2_0, 8,3 GB; 9,0 GB cargado con 16K) | 192.168.1.144 por red, M2 Pro 16 GB | 0.40.6 | `f3c4f4208659` |
+| `bonsai-2:9b` (ternario, Q2_0, 3,2 GB) | ídem, con flash attention | 0.40.6 | `c8b5462f8688` |
 
 Mismo runner, mismos fixtures (`runner/fixtures/`), `think: false`,
 `temperature: 0.2`, `num_ctx` 16384, piso de prompt 545 tokens.
 
 ### Nivel 1 — `find-usages` (10 usos, uno dinámico)
 
-| | 2B | 9B | bonsai-2 27B |
-|---|---|---|---|
-| Formato válido (esquema) | 5/5 | 3/3 | 3/3 |
-| Recall de los 10 usos | 10/10 en 5/5 | 10/10 en 3/3 | 10/10 en 3/3 |
-| Inventados | 0 en 4/5 | 0 en 3/3 | 0 en 3/3 |
-| `kind: dynamic` en `fmt["formatPrice"]` | 1/5 | **3/3** | **3/3** |
-| `path` con la línea pegada | 2/5 corridas | 0/3 | 0/3 |
-| Tiempo por corrida | 28-38 s | 23-32 s | 81-90 s |
+| | 2B | 9B | bonsai-2 27B | bonsai-2 9B |
+|---|---|---|---|---|
+| Formato válido (esquema) | 5/5 | 3/3 | 3/3 | 3/3 |
+| Recall de los 10 usos | 10/10 en 5/5 | 10/10 en 3/3 | 10/10 en 3/3 | 10/10 · 10/10 · 9/10 |
+| Inventados | 0 en 4/5 | 0 en 3/3 | 0 en 3/3 | 0 · 0 · 1 |
+| `kind: dynamic` en `fmt["formatPrice"]` | 1/5 | **3/3** | **3/3** | sin medir |
+| `path` con la línea pegada | 2/5 corridas | 0/3 | 0/3 | 3/3 corridas |
+| Tiempo por corrida | 28-38 s | 23-32 s | 81-90 s | 27-29 s |
 
 ### Nivel 2 — `update-vitest-test` (agregar un test, suite 1 → 2 en verde, diff con `formatPercent(0.125)`)
 
-| | 2B | 9B | bonsai-2 27B |
-|---|---|---|---|
-| Correctas, con la regla del import en el prompt | 2/3 (spike 3, tanda 5) | **3/3** | **3/3** |
-| Correctas, **sin** la regla del import | 0/3 (spike 3, tanda 4) | **3/3** | sin medir |
-| Pasos | 6 (las correctas) · 8 (las que fallan) | 5 con regla · **4 sin regla** | 6 |
-| Rechazos de las guardas | varios por tanda | 0 | 0 |
-| Tiempo por corrida | 33-62 s | 15-25 s | 54-65 s |
+| | 2B | 9B | bonsai-2 27B | bonsai-2 9B |
+|---|---|---|---|---|
+| Correctas, con la regla del import en el prompt | 2/3 (spike 3, tanda 5) | **3/3** | **3/3** | **3/3** ¹ |
+| Correctas, **sin** la regla del import | 0/3 (spike 3, tanda 4) | **3/3** | sin medir | sin medir |
+| Pasos | 6 (las correctas) · 8 (las que fallan) | 5 con regla · **4 sin regla** | 6 | 4-5 |
+| Rechazos de las guardas | varios por tanda | 0 | 0 | 0 |
+| Tiempo por corrida | 33-62 s | 15-25 s | 54-65 s | 13-22 s |
+
+¹ Dos de las tres reescribieron el archivo entero con `write` en vez de
+`edit`; la guarda de identidad las dejó pasar porque el test existente
+sobrevivió. Correcto, pero es la forma más frágil de hacerlo.
 
 ### Nivel 3 — `change-react-component` (prop `discount` opcional en `Cart`; typecheck + tests propios + 4 tests oráculo que el modelo no ve)
 
-| | 2B | 9B | bonsai-2 27B |
-|---|---|---|---|
-| Oráculo débil (sin exigir markup idéntico con `discount={0}`) | 0/1 | 3/3 | — |
-| **Oráculo estricto**, sin regla de React | — | **0/3** — las tres escribieron `{discount && discount > 0 && …}`, que renderiza un `0` suelto | sin medir |
-| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **2/3** (una ignoró la regla) | **3/3** — ternario con `: null` las tres veces |
-| Pasos / tiempo | 10 (tope) | 6-8 · 38-150 s ¹ | 9-10 · 112-134 s |
+| | 2B | 9B | bonsai-2 27B | bonsai-2 9B |
+|---|---|---|---|---|
+| Oráculo débil (sin exigir markup idéntico con `discount={0}`) | 0/1 | 3/3 | — | — |
+| **Oráculo estricto**, sin regla de React | — | **0/3** — las tres escribieron `{discount && discount > 0 && …}`, que renderiza un `0` suelto | sin medir | — |
+| Oráculo estricto, **con** la regla "`&&` con número renderiza 0; usá ternario" | — | **2/3** (una ignoró la regla) | **3/3** — ternario con `: null` las tres veces | **0/3** ² |
+| Pasos / tiempo | 10 (tope) | 6-8 · 38-150 s ¹ | 9-10 · 112-134 s | 10 (tope) · 71-81 s |
+
+² Las tres escribieron `discount > 0` con `discount?: number`, `tsc` falló
+con `TS18048: 'discount' is possibly 'undefined'`, y **repitieron el mismo
+error cuatro veces** sin leer el mensaje: 4 × (`edit`, `run_tests`) con la
+misma salida hasta el tope de pasos. La corrida 3 pasó los 6 tests y falló
+solo el typecheck. El 27B se corrigió de ese mismo `TS18048` al primer
+reintento. Es la diferencia de criterio entre los dos tamaños, en una línea.
 
 Las tres corridas de bonsai siguieron la misma secuencia: primer `edit`,
 `tsc` falla con `TS18048: 'discount' is possibly 'undefined'`, dos edits
@@ -90,6 +102,12 @@ Fuentes: `runs/20261028-1700-qwen3.5-2b-16k/`, `runs/20261028-1711-qwen3.5-9b/`
   aunque pesen lo que un 9B. Para tareas de nivel 1-2 el 9B alcanza y es más
   rápido; para las que exigen criterio (nivel 3) el 27B ternario paga su
   tiempo. En una máquina de 16 GB es, hoy, el techo de calidad medido.
+- **`bonsai-2:9b` no es un atajo.** Tiene la velocidad del `qwen3.5:9b`
+  (13-29 s en niveles 1-2) y resuelve 1 y 2, pero en el 3 queda en 0/3 por
+  no saber salir de un error de tipos que el 27B resuelve al primer intento
+  y el `qwen3.5:9b` ni comete. A igual velocidad, el `qwen3.5:9b` es mejor;
+  a igual criterio, hace falta el 27B. El ternario paga en el tamaño grande,
+  no en el chico — al menos en estas tareas.
 - Los tiempos del 9B en nivel 3 no son limpios (la máquina bajaba bonsai
   durante esa tanda); los de bonsai sí. Repetir el nivel 3 del 9B con la
   máquina quieta antes de citar una relación de tiempos exacta.
